@@ -127,6 +127,13 @@
     white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
   }
   .input-currency.empty { background: transparent; color: var(--ink-mute); font-weight: 600; }
+  .adv-set { margin-top: 20px; border: 1px solid var(--border); border-radius: 16px; background: var(--bg); padding: 0 20px; }
+  .adv-set > summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 16px 0; }
+  .adv-set > summary::-webkit-details-marker { display: none; }
+  .adv-set > summary::before { content: '+'; display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; align-items: center; justify-content: center; font-size: 15px; }
+  .adv-set[open] > summary::before { content: '−'; }
+  .adv-set-title { font-weight: 800; font-size: 15px; color: var(--dark-warm); }
+  .adv-set-sum { font-size: 13px; font-weight: 700; color: var(--brown); }
   .sub-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
   .sub-card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; letter-spacing: -0.3px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
@@ -305,6 +312,12 @@
     .stat-grid { grid-template-columns: 1fr; }
     .top-cta-links { grid-template-columns: 1fr !important; }
   }
+
+  /* 표 내려받기 (CSV·엑셀) */
+  .dl-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
+  .dl-btn { font-family: inherit; font-size: 13px; font-weight: 700; padding: 8px 14px; border-radius: 999px; border: 1.5px solid var(--accent, #D9542B); background: #FBF7F0; color: var(--accent, #D9542B); cursor: pointer; line-height: 1.2; }
+  .dl-btn:hover { background: var(--accent, #D9542B); color: #fff; }
+  .dl-note { font-size: 12px; color: #8B7B6B; font-weight: 600; word-break: keep-all; }
 </style>
 </head>
 <body>
@@ -455,6 +468,24 @@
       </div>
     </div>
 
+    <details class="adv-set" id="adv-set">
+      <summary><span class="adv-set-title">상세 설정</span><span class="adv-set-sum" id="adv-summary">적립액 증가 없음 (매달 같은 금액)</span></summary>
+      <div class="input-group" style="padding-bottom:18px;">
+        <label class="label" for="growth">적립액 매년 증가율</label>
+        <div class="input-wrap">
+          <input type="number" id="growth" value="0" step="0.5" min="0" max="20">
+          <span class="input-currency" id="growth-display">증가 없음</span>
+        </div>
+        <div class="chips" data-target="growth">
+          <button class="chip" data-v="0">0%</button>
+          <button class="chip" data-v="2">2%</button>
+          <button class="chip" data-v="3">3%</button>
+          <button class="chip" data-v="5">5%</button>
+        </div>
+        <div class="input-hint">연봉이 오르는 만큼 적립액도 해마다 이 비율로 늘린다고 가정합니다. 결과의 월 적립액은 <b>첫해 금액</b>이고 이후 매년 늘어납니다</div>
+      </div>
+    </details>
+
     <div class="sub-card" style="margin-top:20px;">
       <div class="toggle-row">
         <div>
@@ -534,6 +565,11 @@
   <div class="card">
     <h3 class="chart-title">연차별 상세 데이터</h3>
     <p class="chart-subtitle" id="table-subtitle">-</p>
+    <div class="dl-bar">
+      <button type="button" class="dl-btn" id="dl-csv">CSV 내려받기</button>
+      <button type="button" class="dl-btn" id="dl-xlsx">엑셀(.xlsx) 내려받기</button>
+      <span class="dl-note">엑셀에는 연도별 표와 월별 표가 함께 들어갑니다 (원 단위 숫자 · 세전)</span>
+    </div>
     <div class="table-wrap">
       <table class="data-table">
         <thead>
@@ -589,6 +625,86 @@
 </div>
 
 <script>
+// ============== 표 내려받기 (CSV · 엑셀 .xlsx) — 외부 라이브러리 없이 동작 ==============
+// TJX.csv('파일이름', rows) · TJX.xlsx('파일이름', [{ name: '시트', rows, widths }])
+// rows = [[머리글...], [값...], ...]  숫자는 숫자 그대로 넣으면 엑셀에서 계산 가능한 숫자 칸이 됩니다
+const TJX = (() => {
+  const enc = new TextEncoder();
+  function csvText(rows) {
+    return '﻿' + rows.map(r => r.map(v => {
+      if (v == null) return '';
+      if (typeof v === 'number') return isFinite(v) ? String(Math.round(v * 100) / 100) : '';
+      const t = String(v);
+      return /[",\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    }).join(',')).join('\r\n');
+  }
+  const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+  function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+  function zipStore(files) {   // 압축 없이 묶기 (엑셀은 이 형식도 그대로 엽니다)
+    const parts = [], central = []; let off = 0;
+    for (const f of files) {
+      const nm = enc.encode(f.name), d = enc.encode(f.text), c = crc32(d);
+      const lh = new DataView(new ArrayBuffer(30));
+      lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+      lh.setUint16(12, 0x21, true); lh.setUint32(14, c, true); lh.setUint32(18, d.length, true); lh.setUint32(22, d.length, true);
+      lh.setUint16(26, nm.length, true);
+      parts.push(new Uint8Array(lh.buffer), nm, d);
+      const ch = new DataView(new ArrayBuffer(46));
+      ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+      ch.setUint16(14, 0x21, true); ch.setUint32(16, c, true); ch.setUint32(20, d.length, true); ch.setUint32(24, d.length, true);
+      ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true);
+      central.push(new Uint8Array(ch.buffer), nm);
+      off += 30 + nm.length + d.length;
+    }
+    const cs = central.reduce((s, a) => s + a.length, 0);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+    end.setUint32(12, cs, true); end.setUint32(16, off, true);
+    return new Blob([...parts, ...central, new Uint8Array(end.buffer)], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  const esc = t => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const colName = i => { let s = ''; i++; while (i > 0) { const m = (i - 1) % 26; s = String.fromCharCode(65 + m) + s; i = Math.floor((i - 1) / 26); } return s; };
+  function sheetXml(sh) {
+    const rows = sh.rows || [];
+    const nCol = rows.reduce((m, r) => Math.max(m, r.length), 1);
+    const widths = sh.widths || [];
+    const cols = Array.from({ length: nCol }, (_, i) => `<col min="${i + 1}" max="${i + 1}" width="${widths[i] || (i === 0 ? 12 : 16)}" customWidth="1"/>`).join('');
+    const body = rows.map((r, ri) => `<row r="${ri + 1}">` + r.map((v, ci) => {
+      const ref = colName(ci) + (ri + 1);
+      if (v == null || v === '') return '';
+      if (typeof v === 'number' && isFinite(v)) {
+        const st = ri === 0 ? 2 : (Math.abs(v - Math.round(v)) < 1e-9 ? 1 : 3);
+        return `<c r="${ref}" s="${st}"><v>${Math.round(v * 10000) / 10000}</v></c>`;
+      }
+      return `<c r="${ref}" t="inlineStr"${ri === 0 ? ' s="2"' : ''}><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
+    }).join('') + '</row>').join('');
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${cols}</cols><sheetData>${body}</sheetData></worksheet>`;
+  }
+  function xlsxBlob(sheets) {
+    const W = 'http://schemas.openxmlformats.org';
+    const files = [
+      { name: '[Content_Types].xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="${W}/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sheets.map((s, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}</Types>` },
+      { name: '_rels/.rels', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${W}/package/2006/relationships"><Relationship Id="rId1" Type="${W}/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>` },
+      { name: 'xl/workbook.xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="${W}/spreadsheetml/2006/main" xmlns:r="${W}/officeDocument/2006/relationships"><sheets>${sheets.map((s, i) => `<sheet name="${esc(String(s.name || 'Sheet' + (i + 1)).replace(/[\\\/\?\*\[\]:]/g, ' ').slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets></workbook>` },
+      { name: 'xl/_rels/workbook.xml.rels', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${W}/package/2006/relationships">${sheets.map((s, i) => `<Relationship Id="rId${i + 1}" Type="${W}/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}<Relationship Id="rId${sheets.length + 1}" Type="${W}/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>` },
+      { name: 'xl/styles.xml', text: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="${W}/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="맑은 고딕"/></font><font><b/><sz val="11"/><name val="맑은 고딕"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>` },
+      ...sheets.map((s, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, text: sheetXml(s) })),
+    ];
+    return zipStore(files);
+  }
+  function save(blob, name) {
+    const a = document.createElement('a'), u = URL.createObjectURL(blob);
+    a.href = u; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(u); a.remove(); }, 1500);
+  }
+  const stamp = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
+  return {
+    csvText, xlsxBlob,
+    csv(name, rows) { save(new Blob([csvText(rows)], { type: 'text/csv;charset=utf-8' }), `${name}_${stamp()}.csv`); },
+    xlsx(name, sheets) { save(xlsxBlob(sheets), `${name}_${stamp()}.xlsx`); },
+  };
+})();
+
 // ============== 포맷 ==============
 function formatKRW(n) {
   const neg = n < 0; n = Math.abs(n);
@@ -642,6 +758,7 @@ function readInputs() {
     monthly: Math.max(0, num('monthly', 0)) * 10000,
     years: Math.max(1, Math.min(60, Math.round(num('years', 20)))),
     rate: Math.max(-5, Math.min(20, num('rate', 6))) / 100,
+    growth: Math.max(0, Math.min(20, num('growth', 0))) / 100,   // 적립액 매년 증가율
     inflationOn,
     inflation: inflationOn ? Math.max(0, Math.min(10, num('inflation', 2.5))) / 100 : 0,
     basis: inflationOn ? basis : 'future',
@@ -656,17 +773,31 @@ function targetAt(inp, months) {
   if (inp.basis === 'today') return inp.goal * Math.pow(1 + inp.inflation, months / 12);
   return inp.goal;
 }
-// 미래가치: 매월 말 적립
-function fv(pv, pmt, r, n) {
-  const g = Math.pow(1 + r, n);
-  return pv * g + (r === 0 ? pmt * n : pmt * (g - 1) / r);
+// 적립액 증가: m번째 달(1부터)의 적립액 = 첫해 월 적립액 × (1+증가율)^(지난 햇수)
+const stepUp = (g, m) => Math.pow(1 + g, Math.floor((m - 1) / 12));
+// 첫해 월 적립액 1원이 n개월 뒤 만드는 금액 (매월 말 적립, 해마다 g만큼 증가)
+function annuityFactor(r, n, g) {
+  if (!g) { const G = Math.pow(1 + r, n); return r === 0 ? n : (G - 1) / r; }
+  let s = 0;
+  for (let m = 1; m <= n; m++) s += stepUp(g, m) * Math.pow(1 + r, n - m);
+  return s;
 }
-// 필요 월 적립액
-function solvePmt(target, pv, r, n) {
-  const g = Math.pow(1 + r, n);
-  const rest = target - pv * g;
+// 첫해 월 적립액 1원으로 n개월 동안 넣는 원금 합계
+function principalFactor(n, g) {
+  if (!g) return n;
+  let s = 0;
+  for (let m = 1; m <= n; m++) s += stepUp(g, m);
+  return s;
+}
+// 미래가치: 매월 말 적립 (g = 적립액 매년 증가율)
+function fv(pv, pmt, r, n, g = 0) {
+  return pv * Math.pow(1 + r, n) + pmt * annuityFactor(r, n, g);
+}
+// 필요 월 적립액 (첫해 기준)
+function solvePmt(target, pv, r, n, g = 0) {
+  const rest = target - pv * Math.pow(1 + r, n);
   if (rest <= 0) return 0;
-  return r === 0 ? rest / n : rest * r / (g - 1);
+  return rest / annuityFactor(r, n, g);
 }
 // 달성 개월 수 (목표가 물가로 움직여도 월 단위로 탐색), 못 닿으면 null
 function solveMonths(inp, R, pmt) {
@@ -674,7 +805,7 @@ function solveMonths(inp, R, pmt) {
   let a = inp.current;
   if (a >= targetAt(inp, 0) && inp.goal > 0) return 0;
   for (let m = 1; m <= MAX_MONTHS; m++) {
-    a = a * (1 + r) + pmt;
+    a = a * (1 + r) + pmt * stepUp(inp.growth || 0, m);
     if (a >= targetAt(inp, m)) return m;
   }
   return null;
@@ -689,24 +820,25 @@ function compute(inp, R = inp.rate) {
     const n = inp.years * 12;
     out.months = n;
     out.target = targetAt(inp, n);
-    out.pmt = solvePmt(out.target, inp.current, r, n);
-    out.final = fv(inp.current, out.pmt, r, n);
+    out.pmt = solvePmt(out.target, inp.current, r, n, inp.growth);
+    out.final = fv(inp.current, out.pmt, r, n, inp.growth);
   } else if (MODE === 'time') {
     out.pmt = inp.monthly;
     out.months = solveMonths(inp, R, inp.monthly);
     if (out.months !== null) {
       out.target = targetAt(inp, out.months);
-      out.final = fv(inp.current, out.pmt, r, out.months);
+      out.final = fv(inp.current, out.pmt, r, out.months, inp.growth);
     }
   } else {
     const n = inp.years * 12;
     out.months = n;
     out.pmt = inp.monthly;
     out.target = targetAt(inp, n);
-    out.final = fv(inp.current, inp.monthly, r, n);
+    out.final = fv(inp.current, inp.monthly, r, n, inp.growth);
   }
   if (out.months !== null) {
-    out.principal = inp.current + out.pmt * out.months;
+    out.principal = inp.current + out.pmt * principalFactor(out.months, inp.growth);
+    out.lastPmt = out.pmt * stepUp(inp.growth, out.months);   // 마지막 달 적립액
     out.gain = out.final - out.principal;
     out.real = out.final / Math.pow(1 + inp.inflation, out.months / 12);
   }
@@ -718,12 +850,13 @@ function buildPath(inp, pmt, years) {
   const r = monthlyRate(inp.rate);
   const rows = [];
   let a = inp.current, principal = inp.current;
-  rows.push({ year: 0, value: a, principal, target: targetAt(inp, 0), real: a });
+  rows.push({ year: 0, value: a, principal, pmt: 0, target: targetAt(inp, 0), real: a });
   for (let y = 1; y <= years; y++) {
-    for (let m = 0; m < 12; m++) { a = a * (1 + r) + pmt; principal += pmt; }
+    const p = pmt * Math.pow(1 + (inp.growth || 0), y - 1);   // 그 해 월 적립액
+    for (let m = 0; m < 12; m++) { a = a * (1 + r) + p; principal += p; }
     const months = y * 12;
     rows.push({
-      year: y, value: a, principal,
+      year: y, value: a, principal, pmt: p,
       target: targetAt(inp, months),
       real: a / Math.pow(1 + inp.inflation, y),
     });
@@ -744,6 +877,8 @@ function render() {
   const goalText = formatManwon(inp.goal / 10000);
   const infText = pct(inp.inflation * 100);
   const todayBasis = inp.basis === 'today' && inp.inflation > 0;
+  const gOn = inp.growth > 0;
+  const gPct = pct(inp.growth * 100);
 
   const vLabel = document.getElementById('verdict-label');
   const vMain = document.getElementById('verdict-main');
@@ -755,6 +890,7 @@ function render() {
     vMain.textContent = '목표금액을 입력해 주세요';
     vSub.textContent = '';
     [1, 2, 3, 4].forEach(i => setStat(i, '-', '-', ''));
+    lastExport = null;
     drawGrowth(inp, buildPath(inp, 0, 10), null);
     renderScenarios(inp);
     renderInsight(inp, res);
@@ -769,14 +905,17 @@ function render() {
       vMain.innerHTML = `지금 모아둔 돈만으로도 <span class="hl">${inp.years}년 뒤 목표 달성</span>이 가능합니다`;
       vSub.innerHTML = `추가 적립 없이 연 ${pct(inp.rate * 100)}로 굴리면 ${mw !== null ? '<strong>' + yearsMonthsText(mw) + '</strong> 뒤 목표에 닿습니다.' : '목표에 닿습니다.'}`;
     } else {
-      vMain.innerHTML = `${goalText}을 ${inp.years}년 안에 모으려면<br>매달 <span class="hl">${wonToManText(res.pmt)}</span>씩 모으면 됩니다`;
+      vMain.innerHTML = gOn
+        ? `${goalText}을 ${inp.years}년 안에 모으려면<br>첫해 매달 <span class="hl">${wonToManText(res.pmt)}</span>부터, 해마다 ${gPct}씩 늘려 모으면 됩니다`
+        : `${goalText}을 ${inp.years}년 안에 모으려면<br>매달 <span class="hl">${wonToManText(res.pmt)}</span>씩 모으면 됩니다`;
       vSub.innerHTML = todayBasis
         ? `물가 ${infText}를 반영하면 ${inp.years}년 뒤 목표는 <strong>${formatKRW(res.target)}원</strong>입니다. 지금 돈 ${goalText}과 같은 가치를 맞추는 기준으로 계산했습니다.`
         : `${inp.years}년 뒤 통장에 <strong>${formatKRW(res.target)}원</strong>이 찍히는 것을 목표로 계산했습니다.${inp.inflation > 0 ? ' 그때 이 돈의 가치는 오늘 돈으로 <strong>' + formatKRW(res.real) + '원</strong>입니다.' : ''}`;
     }
     pathYears = inp.years; pathPmt = res.pmt;
     const delay = inp.years > 5 ? compute({ ...inp, years: inp.years - 5 }) : null;
-    setStat(1, '필요한 월 적립액', wonToManText(res.pmt), `연 ${wonToManText(res.pmt * 12)}`);
+    setStat(1, gOn ? '필요한 월 적립액 (첫해)' : '필요한 월 적립액', wonToManText(res.pmt),
+      gOn ? `매년 ${gPct}씩 늘려 마지막 해 월 ${wonToManText(res.lastPmt)}` : `연 ${wonToManText(res.pmt * 12)}`);
     setStat(2, `${inp.years}년 뒤 목표`, formatKRW(res.target) + '원', todayBasis ? `지금 돈 ${goalText} 가치` : '달성 시점 금액 그대로');
     setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', `수익 ${formatKRW(Math.max(0, res.gain))}원 · 평가액의 ${pct(Math.max(0, res.gain) / Math.max(1, res.final) * 100, 0)}`);
     if (delay) {
@@ -803,7 +942,7 @@ function render() {
     } else {
       const now = new Date();
       const doneAt = new Date(now.getFullYear(), now.getMonth() + res.months, 1);
-      vMain.innerHTML = `매달 ${wonToManText(inp.monthly)}씩이면<br><span class="hl">${yearsMonthsText(res.months)}</span> 뒤 ${goalText}에 닿습니다`;
+      vMain.innerHTML = `매달 ${wonToManText(inp.monthly)}씩${gOn ? `(해마다 ${gPct}씩 늘려)` : ''}이면<br><span class="hl">${yearsMonthsText(res.months)}</span> 뒤 ${goalText}에 닿습니다`;
       vSub.innerHTML = `오늘 시작하면 <strong>${doneAt.getFullYear()}년 ${doneAt.getMonth() + 1}월</strong> 무렵입니다.` +
         (todayBasis ? ` 물가 ${infText}를 반영해 그때의 목표는 <strong>${formatKRW(res.target)}원</strong>으로 계산했습니다.` : '');
       const plus = compute({ ...inp, monthly: inp.monthly + 500000 });
@@ -827,19 +966,22 @@ function render() {
     if (ratio !== null) {
       if (ratio >= 100) sub += ` 목표(${formatKRW(res.target)}원)를 <strong>${pct(ratio - 100, 0)} 넘깁니다</strong>.`;
       else {
-        const need = solvePmt(res.target, inp.current, monthlyRate(inp.rate), inp.years * 12);
-        sub += ` 목표(${formatKRW(res.target)}원)의 <strong>${pct(ratio, 0)}</strong> 수준이라, 목표를 채우려면 매달 <strong>${wonToManText(need)}</strong>이 필요합니다(지금보다 월 ${wonToManText(need - inp.monthly)} 더).`;
+        const need = solvePmt(res.target, inp.current, monthlyRate(inp.rate), inp.years * 12, inp.growth);
+        sub += ` 목표(${formatKRW(res.target)}원)의 <strong>${pct(ratio, 0)}</strong> 수준이라, 목표를 채우려면 ${gOn ? '첫해 ' : ''}매달 <strong>${wonToManText(need)}</strong>이 필요합니다(지금보다 월 ${wonToManText(need - inp.monthly)} 더${gOn ? `, 이후 매년 ${gPct}씩 증가` : ''}).`;
       }
     }
     vSub.innerHTML = sub;
     setStat(1, `${inp.years}년 뒤 평가액`, formatKRW(res.final) + '원', `원금의 ${(res.final / Math.max(1, res.principal)).toFixed(2)}배`);
-    setStat(2, '내가 넣는 돈', formatKRW(res.principal) + '원', `월 ${wonToManText(inp.monthly)} × ${inp.years * 12}개월 + 지금 자산`);
+    setStat(2, '내가 넣는 돈', formatKRW(res.principal) + '원', gOn
+      ? `월 ${wonToManText(inp.monthly)}부터 매년 ${gPct}씩 늘려 ${inp.years * 12}개월 + 지금 자산`
+      : `월 ${wonToManText(inp.monthly)} × ${inp.years * 12}개월 + 지금 자산`);
     setStat(3, '불어난 돈', formatKRW(res.gain) + '원', `평가액의 ${pct(res.gain / Math.max(1, res.final) * 100, 0)}`);
     setStat(4, '실질가치(오늘 돈)', formatKRW(res.real) + '원', inp.inflation > 0 ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
     pathYears = inp.years; pathPmt = inp.monthly;
   }
 
   const path = buildPath(inp, pathPmt, pathYears);
+  lastExport = { inp, path, pmt: pathPmt, years: pathYears };
   drawGrowth(inp, path, res);
   renderTable(inp, path);
   renderScenarios(inp);
@@ -941,11 +1083,55 @@ function drawGrowth(inp, path, res) {
   });
 }
 
+// ===== 표 내려받기 (원 단위 숫자) =====
+let lastExport = null;
+function exportYearRows(x) {
+  const R = v => Math.round(v), inp = x.inp;
+  const head = ['연차', '그 해 월 적립액', '누적 원금', '누적 수익', '평가액'];
+  if (inp.inflation > 0) head.push('실질가치(오늘 돈)');
+  if (inp.goal > 0) head.push('그해 목표', '목표 대비(%)');
+  const rows = [head];
+  x.path.filter(p => p.year > 0).forEach(p => {
+    const row = [p.year, R(p.pmt), R(p.principal), R(p.value - p.principal), R(p.value)];
+    if (inp.inflation > 0) row.push(R(p.real));
+    if (inp.goal > 0) row.push(R(p.target), Math.round(p.value / p.target * 1000) / 10);
+    rows.push(row);
+  });
+  return rows;
+}
+function exportMonthRows(x) {   // 계산 자체가 월 단위라 월별로도 같은 결과
+  const R = v => Math.round(v), inp = x.inp, r = monthlyRate(inp.rate);
+  const head = ['개월', '적립액', '누적 원금', '평가액'];
+  if (inp.inflation > 0) head.push('실질가치(오늘 돈)');
+  if (inp.goal > 0) head.push('그달 목표');
+  const rows = [head];
+  let a = inp.current, pr = inp.current;
+  for (let m = 1; m <= x.years * 12; m++) {
+    const p = x.pmt * stepUp(inp.growth || 0, m);
+    a = a * (1 + r) + p; pr += p;
+    const row = [m, R(p), R(pr), R(a)];
+    if (inp.inflation > 0) row.push(R(a / Math.pow(1 + inp.inflation, m / 12)));
+    if (inp.goal > 0) row.push(R(targetAt(inp, m)));
+    rows.push(row);
+  }
+  return rows;
+}
+document.addEventListener('click', e => {
+  const id = e.target && e.target.id;
+  if (!lastExport || (id !== 'dl-csv' && id !== 'dl-xlsx')) return;
+  const name = '목표금액_연차별';
+  if (id === 'dl-csv') TJX.csv(name, exportYearRows(lastExport));
+  else TJX.xlsx(name, [
+    { name: '연도별', rows: exportYearRows(lastExport), widths: [7, 15, 16, 16, 17, 18, 17, 13] },
+    { name: '월별', rows: exportMonthRows(lastExport), widths: [7, 13, 16, 17, 18, 17] },
+  ]);
+});
+
 function renderTable(inp, path) {
   document.getElementById('th-real').style.display = inp.inflation > 0 ? '' : 'none';
   const hitIdx = path.findIndex(p => p.year > 0 && p.value >= p.target && inp.goal > 0);
   document.getElementById('table-subtitle').textContent =
-    '매월 말 적립, 연 수익률을 월 복리로 환산해 계산했습니다.' + (hitIdx > 0 ? ` 강조된 행이 처음으로 목표를 넘는 해입니다.` : '');
+    '매월 말 적립, 연 수익률을 월 복리로 환산해 계산했습니다.' + (inp.growth > 0 ? ` 월 적립액은 해마다 ${pct(inp.growth * 100)}씩 늘어납니다.` : '') + (hitIdx > 0 ? ` 강조된 행이 처음으로 목표를 넘는 해입니다.` : '');
   const html = path.filter(p => p.year > 0).map(p => {
     const rate = inp.goal > 0 ? p.value / p.target * 100 : null;
     const hl = path.indexOf(p) === hitIdx ? ' class="highlight-row"' : '';
@@ -1088,6 +1274,10 @@ function updateDisplays() {
   set('years-display', isFinite(y) ? Math.round(y) + '년' : '-', !isFinite(y));
   set('rate-display', isFinite(r) ? '연 ' + r.toFixed(1) + '%' : '-', !isFinite(r));
   set('inflation-display', isFinite(i) ? '연 ' + i.toFixed(1) + '%' : '-', !isFinite(i));
+  const gr = v('growth');
+  set('growth-display', isFinite(gr) && gr > 0 ? '매년 ' + gr.toFixed(1) + '%' : '증가 없음', !(gr > 0));
+  document.getElementById('adv-summary').textContent = isFinite(gr) && gr > 0
+    ? `적립액 매년 ${gr.toFixed(1)}% 증가` : '적립액 증가 없음 (매달 같은 금액)';
   document.querySelectorAll('.chips').forEach(box => {
     const cur = parseFloat(document.getElementById(box.dataset.target).value);
     box.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', parseFloat(ch.dataset.v) === cur));
@@ -1109,7 +1299,7 @@ function applyMode() {
 function rerender() { updateDisplays(); render(); }
 
 function bindEvents() {
-  ['goal', 'current', 'monthly', 'years', 'rate', 'inflation'].forEach(id =>
+  ['goal', 'current', 'monthly', 'years', 'rate', 'inflation', 'growth'].forEach(id =>
     document.getElementById(id).addEventListener('input', rerender));
   document.getElementById('inflation-on').addEventListener('change', rerender);
   document.querySelectorAll('input[name=basis]').forEach(r => r.addEventListener('change', rerender));
@@ -1136,6 +1326,7 @@ function buildUrl(inp) {
   if (MODE !== 'pmt') p.set('monthly', Math.round(inp.monthly / 10000));
   if (MODE !== 'time') p.set('years', inp.years);
   p.set('rate', Math.round(inp.rate * 1000) / 10);
+  if (inp.growth > 0) p.set('growth', Math.round(inp.growth * 1000) / 10);
   p.set('inflation', inp.inflationOn ? Math.round(inp.inflation * 1000) / 10 : 0);
   if (inp.inflationOn) p.set('basis', inp.basis);
   return location.href.split('?')[0].split('#')[0] + '?' + p.toString();
@@ -1158,7 +1349,7 @@ function readUrl() {
   let q; try { q = new URLSearchParams(location.search); } catch (e) { return; }
   if (!q.toString()) return;
   const alias = { 'current-assets': 'current', 'monthly-saving': 'monthly' };
-  const ids = ['goal', 'current', 'monthly', 'years', 'rate', 'inflation', 'current-assets', 'monthly-saving'];
+  const ids = ['goal', 'current', 'monthly', 'years', 'rate', 'inflation', 'growth', 'current-assets', 'monthly-saving'];
   ids.forEach(k => {
     if (!q.has(k)) return;
     const v = parseFloat(q.get(k));
@@ -1173,6 +1364,7 @@ function readUrl() {
   if (basis === 'today' || basis === 'future') document.querySelector(`input[name=basis][value=${basis}]`).checked = true;
   const mode = q.get('mode');
   if (['pmt', 'time', 'fv'].includes(mode)) MODE = mode;
+  if (parseFloat(q.get('growth')) > 0) document.getElementById('adv-set').open = true;
   if (q.get('from') === 'retirement') {
     if (!q.has('basis')) document.querySelector('input[name=basis][value=future]').checked = true;
     document.getElementById('from-bar-slot').innerHTML =
