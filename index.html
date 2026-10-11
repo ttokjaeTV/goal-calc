@@ -1,0 +1,1191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>목표금액 계산기 · 똑재TV</title>
+<meta name="description" content="목표금액까지 매달 얼마씩, 몇 년이 걸릴지, 지금 계획대로면 얼마가 모일지 한 번에 계산합니다. 물가 반영·수익률 시나리오 비교 포함.">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<style>
+  :root {
+    --bg: #F5EFE6;
+    --bg-alt: #EFE7DA;
+    --ink: #1A1A1A;
+    --ink-soft: #4A4A4A;
+    --ink-mute: #8B8276;
+    --accent: #D9542B;
+    --accent-soft: #F4D5C4;
+    --border: #E5DCC8;
+    --white: #FBF7F0;
+    --brown: #8B6F47;
+    --beige-gold: #C4A57B;
+    --dark-warm: #3A2F26;
+    --dark-warm-soft: #5A4A3D;
+    --green: #4A5A4A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    padding: 32px 24px;
+    font-weight: 600;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 1200px; margin: 0 auto; }
+
+  /* 헤더 */
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 40px; }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 40px; height: 40px; background: var(--dark-warm); color: var(--white);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 20px;
+  }
+  .logo-name { font-size: 18px; font-weight: 900; letter-spacing: -0.5px; }
+  .logo-sub { font-size: 10px; color: var(--ink-mute); font-weight: 700; letter-spacing: 1px; }
+
+  /* 히어로 */
+  .hero { margin-bottom: 32px; }
+  .tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--white); border: 1.5px solid var(--accent); color: var(--accent);
+    padding: 6px 14px; border-radius: 999px; font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+    margin-bottom: 20px;
+  }
+  .tag .dot { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+  .hero-title { font-size: 64px; font-weight: 900; letter-spacing: -2.5px; line-height: 1.05; margin-bottom: 20px; }
+  .underline-mark { background: linear-gradient(transparent 60%, var(--accent-soft) 60%); padding: 0 4px; }
+  .hero-desc { font-size: 17px; color: var(--ink-soft); font-weight: 500; line-height: 1.7; }
+
+  /* 상단 CTA */
+  .top-cta {
+    background: var(--bg-alt); border: 1px solid var(--border); border-radius: 16px;
+    padding: 18px 24px; margin-bottom: 32px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;
+  }
+  .top-cta-text { font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+  .top-cta-links { display: flex; gap: 8px; flex-wrap: wrap; }
+  .top-cta-link {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px;
+    font-size: 13px; font-weight: 700; text-decoration: none;
+    background: var(--white); border: 1.5px solid var(--border); color: var(--ink);
+  }
+  .top-cta-link.primary { background: var(--accent); color: var(--white); border-color: var(--accent); }
+  .naver-mark {
+    display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px;
+    background: #03C75A; color: #FFFFFF; font-weight: 900; font-size: 11px; border-radius: 3px;
+    line-height: 1; letter-spacing: -0.5px; flex-shrink: 0;
+  }
+
+  /* 카드 / 스텝 */
+  .card { background: var(--white); border: 1px solid var(--border); border-radius: 20px; padding: 28px; margin-bottom: 32px; }
+  .step-label { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .step-line { width: 28px; height: 2px; background: var(--accent); }
+  .step-text { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent); }
+  .card-title { font-size: 24px; font-weight: 900; letter-spacing: -0.6px; margin-bottom: 6px; }
+  .card-subtitle { font-size: 14px; color: var(--ink-mute); font-weight: 500; margin-bottom: 22px; line-height: 1.6; }
+
+  /* 모드 탭 */
+  .mode-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .mode-tab {
+    text-align: left; background: var(--white); border: 1.5px solid var(--border); border-radius: 16px;
+    padding: 18px 20px; cursor: pointer; font-family: inherit; color: var(--ink);
+    transition: all 0.15s ease;
+  }
+  .mode-tab:hover { border-color: var(--accent); }
+  .mode-tab .mt-num { font-size: 11px; font-weight: 800; letter-spacing: 1px; color: var(--ink-mute); margin-bottom: 6px; display: block; }
+  .mode-tab .mt-title { font-size: 18px; font-weight: 900; letter-spacing: -0.4px; display: block; margin-bottom: 4px; }
+  .mode-tab .mt-desc { font-size: 13px; color: var(--ink-mute); font-weight: 500; display: block; }
+  .mode-tab.active { background: var(--dark-warm); border-color: var(--dark-warm); color: var(--white); }
+  .mode-tab.active .mt-num { color: var(--accent-soft); }
+  .mode-tab.active .mt-desc { color: #D9D2C5; }
+
+  /* 입력 */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .input-group { margin-bottom: 18px; }
+  .input-group:last-child { margin-bottom: 0; }
+  .label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.5px; color: var(--ink-soft); margin-bottom: 8px; }
+  input[type=number], select {
+    background: var(--white); border: 1.5px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; font-family: inherit; font-size: 16px; color: var(--ink); font-weight: 700;
+    transition: all 0.15s ease; width: 100%;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .input-hint { font-size: 12px; color: var(--ink-mute); font-weight: 600; margin-top: 6px; }
+  .input-wrap { position: relative; }
+  .input-wrap input { padding-right: 130px; }
+  .input-currency {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800;
+    padding: 5px 10px; border-radius: 6px; pointer-events: none; letter-spacing: -0.3px;
+    white-space: nowrap; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+  }
+  .input-currency.empty { background: transparent; color: var(--ink-mute); font-weight: 600; }
+  .sub-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+  .sub-card-title { font-size: 15px; font-weight: 800; margin-bottom: 14px; letter-spacing: -0.3px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    background: var(--white); border: 1.5px solid var(--border); color: var(--ink-soft);
+    border-radius: 999px; padding: 5px 12px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  .is-hidden { display: none !important; }
+  .fixed-note {
+    background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 12px 14px;
+    font-size: 13.5px; font-weight: 700; line-height: 1.55;
+  }
+
+  /* 토글 */
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .toggle-text-title { font-size: 15px; font-weight: 800; }
+  .toggle-text-desc { font-size: 13px; color: var(--ink-mute); font-weight: 500; margin-top: 2px; }
+  .toggle-switch { position: relative; display: inline-block; width: 56px; height: 30px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; }
+  .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #C4B8A3; transition: 0.25s; border-radius: 30px; }
+  .toggle-slider:before {
+    position: absolute; content: ""; height: 22px; width: 22px; left: 4px; bottom: 4px;
+    background: var(--white); transition: 0.25s; border-radius: 50%; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+  .toggle-switch input:checked + .toggle-slider:before { transform: translateX(26px); }
+  .inflation-body { margin-top: 18px; padding-top: 18px; border-top: 1px dashed var(--border); }
+  .radio-row { display: flex; flex-direction: column; gap: 8px; }
+  .radio-opt {
+    display: flex; gap: 10px; align-items: flex-start; background: var(--white); border: 1.5px solid var(--border);
+    border-radius: 12px; padding: 12px 14px; cursor: pointer; transition: all 0.15s ease;
+  }
+  .radio-opt:hover { border-color: var(--accent); }
+  .radio-opt input { margin-top: 4px; accent-color: var(--accent); }
+  .radio-opt .ro-title { font-size: 14px; font-weight: 800; }
+  .radio-opt .ro-desc { font-size: 12.5px; color: var(--ink-mute); font-weight: 500; margin-top: 2px; }
+  .radio-opt.on { border-color: var(--accent); background: #FCEFE6; }
+
+  /* 결과 */
+  .verdict {
+    background: var(--dark-warm); color: var(--white); border-radius: 20px; padding: 30px 32px; margin-bottom: 20px;
+  }
+  .verdict-label { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent-soft); margin-bottom: 10px; }
+  .verdict-main { font-size: 30px; font-weight: 900; letter-spacing: -0.8px; line-height: 1.3; }
+  .verdict-main .hl { color: #FFB38F; }
+  .verdict-sub { font-size: 15px; color: #D9D2C5; font-weight: 500; margin-top: 12px; line-height: 1.7; }
+  .verdict-sub strong { color: var(--white); }
+
+  .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--white); border: 1px solid var(--border); border-radius: 16px; padding: 22px; }
+  .stat-card.accent { background: var(--accent); border-color: var(--accent); color: var(--white); }
+  .stat-card.accent .stat-label, .stat-card.accent .stat-sub { color: #FDE3D6; }
+  .stat-card.accent-green { background: var(--green); border-color: var(--green); color: var(--white); }
+  .stat-card.accent-green .stat-label, .stat-card.accent-green .stat-sub { color: #B8C4B8; }
+  .stat-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; color: var(--ink-mute); margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 900; letter-spacing: -1px; line-height: 1.15; }
+  .stat-sub { font-size: 13px; color: var(--ink-mute); margin-top: 6px; font-weight: 500; line-height: 1.5; }
+
+  .chart-title { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; margin-bottom: 4px; }
+  .chart-subtitle { font-size: 13px; color: var(--ink-mute); font-weight: 500; margin-bottom: 18px; line-height: 1.6; }
+  .chart-container { position: relative; height: 360px; width: 100%; }
+  .chart-container.sm { height: 300px; }
+
+  /* 시나리오 표 */
+  .table-wrap { overflow-x: auto; margin-top: 16px; border-radius: 12px; }
+  .data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+  .data-table th {
+    background: var(--bg-alt); padding: 12px 10px; text-align: right; font-weight: 700; color: var(--ink-soft);
+    font-size: 11.5px; border-bottom: 1.5px solid var(--border); white-space: nowrap;
+  }
+  .data-table th:first-child { text-align: center; }
+  .data-table td {
+    padding: 11px 10px; text-align: right; border-bottom: 1px solid var(--border);
+    font-weight: 600; color: var(--ink); white-space: nowrap;
+  }
+  .data-table td:first-child { text-align: center; font-weight: 800; color: var(--accent); }
+  .data-table tbody tr:hover { background: var(--bg-alt); }
+  .data-table .highlight-row { background: var(--accent-soft); }
+  .data-table .highlight-row td { font-weight: 800; }
+  .data-table td.c-accent { color: var(--accent); font-weight: 800; }
+  .data-table td.c-brown { color: var(--brown); }
+  .data-table td.c-green { color: var(--green); }
+  .data-table td.c-left { text-align: left; }
+  .scen-table { min-width: 560px; }
+  .tag-mini {
+    display: inline-block; font-size: 10.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent); color: var(--white); margin-left: 6px; vertical-align: 1px;
+  }
+
+  /* 인사이트 */
+  .insight-box { background: var(--dark-warm); color: var(--white); border-radius: 20px; padding: 36px; margin-bottom: 24px; }
+  .insight-label { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .insight-label-text { font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--accent-soft); }
+  .insight-title { font-size: 24px; font-weight: 900; margin-bottom: 16px; letter-spacing: -0.5px; line-height: 1.35; }
+  .insight-desc { font-size: 15px; line-height: 1.75; color: #D9D2C5; font-weight: 500; }
+  .insight-desc strong { color: var(--white); }
+  .insight-cta {
+    margin-top: 28px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.12);
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  }
+  .insight-cta-text { font-size: 14px; color: #D9D2C5; font-weight: 600; margin-right: 8px; }
+  .cta-link {
+    display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 10px;
+    font-size: 13px; font-weight: 700; text-decoration: none; transition: all 0.2s ease; letter-spacing: -0.2px;
+  }
+  .cta-link.primary { background: var(--accent); color: var(--white); }
+  .cta-link.primary:hover { background: #E66740; transform: translateY(-1px); }
+  .cta-link.secondary { background: rgba(255,255,255,0.08); color: var(--white); border: 1px solid rgba(255,255,255,0.15); }
+  .cta-link.secondary:hover { background: rgba(255,255,255,0.15); transform: translateY(-1px); }
+
+  .link-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+  .btn {
+    background: var(--dark-warm); color: var(--white); border: none; padding: 11px 18px; border-radius: 12px;
+    font-family: inherit; font-weight: 700; cursor: pointer; transition: all 0.15s ease; font-size: 14px;
+    display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+  }
+  .btn:hover { background: var(--accent); }
+  .btn.ghost { background: var(--white); color: var(--ink); border: 1.5px solid var(--border); }
+  .btn.ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .from-bar {
+    display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between;
+    background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 14px 18px;
+    margin-bottom: 24px; font-size: 14.5px; font-weight: 700; line-height: 1.6;
+  }
+  .from-bar a { color: var(--accent); font-weight: 800; white-space: nowrap; text-decoration: none; }
+
+  footer { text-align: center; font-size: 12.5px; color: var(--ink-mute); font-weight: 500; line-height: 1.8; padding: 24px 0 8px; }
+
+  @media (max-width: 1100px) {
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 768px) {
+    body { padding: 16px 12px; }
+    header { margin-bottom: 24px; }
+    .card { padding: 18px 16px !important; margin-bottom: 20px !important; border-radius: 16px !important; }
+    .hero-title { font-size: 34px !important; letter-spacing: -1.2px !important; line-height: 1.18 !important; }
+    .hero-desc { font-size: 15px; }
+    .hero-desc br { display: none; }
+    .top-cta { flex-direction: column; align-items: stretch; padding: 16px; }
+    .top-cta-links { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .top-cta-link { justify-content: center; }
+    .mode-tabs { grid-template-columns: 1fr; gap: 8px; }
+    .mode-tab { padding: 14px 16px; }
+    .mode-tab .mt-title { font-size: 16px; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr !important; gap: 14px !important; }
+    .grid-4 { grid-template-columns: 1fr 1fr !important; gap: 10px !important; }
+    .sub-card { padding: 16px; }
+    .input-wrap input { padding-right: 112px; }
+    .input-currency { max-width: 96px; font-size: 12px; }
+    .card-title { font-size: 20px; }
+    .verdict { padding: 22px 18px; border-radius: 16px; }
+    .verdict-main { font-size: 22px; letter-spacing: -0.5px; }
+    .verdict-sub { font-size: 14px; }
+    .stat-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+    .stat-card { padding: 16px !important; border-radius: 14px !important; }
+    .stat-value { font-size: 21px !important; }
+    .stat-sub { font-size: 12px; }
+    .chart-title { font-size: 15px; line-height: 1.4; }
+    .chart-container { height: 280px !important; }
+    .chart-container.sm { height: 260px !important; }
+    .insight-box { padding: 24px 18px; border-radius: 16px; }
+    .insight-title { font-size: 19px !important; }
+    .insight-cta { flex-direction: column; align-items: stretch; }
+    .cta-link { justify-content: center; }
+    .table-wrap { margin: 16px -16px 0; padding: 0 16px; -webkit-overflow-scrolling: touch; }
+    .data-table { font-size: 11.5px; min-width: 640px; }
+    .scen-table { min-width: 480px; }
+    .data-table th { padding: 8px 6px; font-size: 10.5px; }
+    .data-table td { padding: 8px 6px; }
+  }
+  @media (max-width: 380px) {
+    .hero-title { font-size: 29px !important; }
+    .stat-grid { grid-template-columns: 1fr; }
+    .top-cta-links { grid-template-columns: 1fr !important; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">똑</div>
+      <div>
+        <div class="logo-name">똑재TV</div>
+        <div class="logo-sub">GOAL CALCULATOR</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="hero">
+    <span class="tag"><span class="dot"></span>목표금액 계산기</span>
+    <h1 class="hero-title">
+      목표한 그 돈,<br>
+      <span class="underline-mark">매달 얼마씩, 몇 년</span>이면 될까?
+    </h1>
+    <p class="hero-desc">
+      목표금액까지 필요한 월 적립액, 걸리는 기간, 지금 계획대로면 모이는 금액을 한 번에 계산합니다.<br>
+      물가를 반영한 '진짜 목표'와 수익률별 차이까지 같이 보여드립니다.
+    </p>
+  </div>
+
+  <div class="top-cta">
+    <div class="top-cta-text">💡 <strong>노후자금 목표 세우는 법</strong>이 궁금하신가요? 똑재TV에서 매주 만나보세요.</div>
+    <div class="top-cta-links">
+      <a href="https://www.youtube.com/@ttok_jae" target="_blank" rel="noopener" class="top-cta-link primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        똑재TV 구독하기
+      </a>
+      <a href="https://cafe.naver.com/ttokjae" target="_blank" rel="noopener" class="top-cta-link">
+        <span class="naver-mark">N</span>
+        평생 ETF 투자 카페
+      </a>
+    </div>
+  </div>
+
+  <div id="from-bar-slot"></div>
+
+  <!-- STEP 01 : 모드 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 01 / 무엇이 궁금하세요?</span></div>
+    <h2 class="card-title">계산 방식을 고르세요</h2>
+    <p class="card-subtitle">같은 숫자라도 질문에 따라 답이 달라집니다. 지금 가장 궁금한 걸 고르세요.</p>
+    <div class="mode-tabs" role="tablist">
+      <button class="mode-tab active" data-mode="pmt" role="tab">
+        <span class="mt-num">MODE 1</span>
+        <span class="mt-title">매달 얼마 모아야 하나?</span>
+        <span class="mt-desc">목표금액·기간 → 필요한 월 적립액</span>
+      </button>
+      <button class="mode-tab" data-mode="time" role="tab">
+        <span class="mt-num">MODE 2</span>
+        <span class="mt-title">몇 년 걸리나?</span>
+        <span class="mt-desc">목표금액·월 적립액 → 달성 시점</span>
+      </button>
+      <button class="mode-tab" data-mode="fv" role="tab">
+        <span class="mt-num">MODE 3</span>
+        <span class="mt-title">이대로면 얼마 모이나?</span>
+        <span class="mt-desc">월 적립액·기간 → 모이는 금액</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 02 : 조건 -->
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 02 / 조건 입력</span></div>
+    <h2 class="card-title">목표와 지금 상황을 입력하세요</h2>
+    <p class="card-subtitle">금액은 모두 <strong>만원 단위</strong>입니다. 목표금액이 막막하다면 <a href="https://ttokjaetv.github.io/retirement/" target="_blank" rel="noopener" style="color:var(--accent);font-weight:800;text-decoration:none;">은퇴 역산 계산기</a>로 노후 필요자금부터 계산해 보세요.</p>
+
+    <div class="grid-2" style="align-items:start;">
+      <div class="sub-card">
+        <div class="sub-card-title">목표</div>
+        <div class="input-group">
+          <label class="label" for="goal" id="goal-label">목표금액</label>
+          <div class="input-wrap">
+            <input type="number" id="goal" value="50000" step="1000" min="0">
+            <span class="input-currency" id="goal-display">5억원</span>
+          </div>
+          <div class="chips" data-target="goal">
+            <button class="chip" data-v="10000">1억</button>
+            <button class="chip" data-v="30000">3억</button>
+            <button class="chip" data-v="50000">5억</button>
+            <button class="chip" data-v="100000">10억</button>
+          </div>
+        </div>
+        <div class="input-group" id="years-group">
+          <label class="label" for="years">투자 기간</label>
+          <div class="input-wrap">
+            <input type="number" id="years" value="20" step="1" min="1" max="60">
+            <span class="input-currency" id="years-display">20년</span>
+          </div>
+          <div class="chips" data-target="years">
+            <button class="chip" data-v="5">5년</button>
+            <button class="chip" data-v="10">10년</button>
+            <button class="chip" data-v="20">20년</button>
+            <button class="chip" data-v="30">30년</button>
+          </div>
+        </div>
+        <div class="input-group is-hidden" id="years-auto-note">
+          <div class="fixed-note">투자 기간은 계산 결과로 나옵니다. 월 적립액과 수익률만 넣어 주세요.</div>
+        </div>
+      </div>
+
+      <div class="sub-card">
+        <div class="sub-card-title">지금 상황</div>
+        <div class="input-group">
+          <label class="label" for="current">지금 모아둔 투자금</label>
+          <div class="input-wrap">
+            <input type="number" id="current" value="3000" step="100" min="0">
+            <span class="input-currency" id="current-display">3,000만원</span>
+          </div>
+          <div class="input-hint">이 목표에 쓸 돈만 · 없으면 0</div>
+        </div>
+        <div class="input-group" id="monthly-group">
+          <label class="label" for="monthly">매월 적립액</label>
+          <div class="input-wrap">
+            <input type="number" id="monthly" value="100" step="10" min="0">
+            <span class="input-currency" id="monthly-display">월 100만원</span>
+          </div>
+          <div class="chips" data-target="monthly">
+            <button class="chip" data-v="50">50만</button>
+            <button class="chip" data-v="100">100만</button>
+            <button class="chip" data-v="150">150만</button>
+            <button class="chip" data-v="200">200만</button>
+          </div>
+        </div>
+        <div class="input-group is-hidden" id="monthly-auto-note">
+          <div class="fixed-note">매월 적립액은 계산 결과로 나옵니다. 목표금액과 기간만 넣어 주세요.</div>
+        </div>
+        <div class="input-group">
+          <label class="label" for="rate">예상 연 수익률</label>
+          <div class="input-wrap">
+            <input type="number" id="rate" value="6" step="0.5" min="-5" max="20">
+            <span class="input-currency" id="rate-display">연 6.0%</span>
+          </div>
+          <div class="chips" data-target="rate">
+            <button class="chip" data-v="3">3%</button>
+            <button class="chip" data-v="5">5%</button>
+            <button class="chip" data-v="7">7%</button>
+            <button class="chip" data-v="9">9%</button>
+          </div>
+          <div class="input-hint">세전 · 매월 말 적립, 연 수익률을 월 복리로 환산</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-top:20px;">
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-text-title">물가 반영</div>
+          <div class="toggle-text-desc">지금의 5억과 20년 뒤의 5억은 같은 돈이 아닙니다</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="inflation-on" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="inflation-body" id="inflation-body">
+        <div class="grid-2" style="align-items:start;">
+          <div class="input-group">
+            <label class="label" for="inflation">연 물가상승률</label>
+            <div class="input-wrap">
+              <input type="number" id="inflation" value="2.5" step="0.1" min="0" max="10">
+              <span class="input-currency" id="inflation-display">연 2.5%</span>
+            </div>
+            <div class="input-hint">한국은행 물가안정목표 2.0% · 다른 똑재TV 계산기와 같은 2.5%가 기본값</div>
+          </div>
+          <div class="input-group">
+            <span class="label">목표금액은 어느 시점 기준인가요?</span>
+            <div class="radio-row">
+              <label class="radio-opt on" id="basis-today-opt">
+                <input type="radio" name="basis" value="today" checked>
+                <span><span class="ro-title">지금 돈 가치로 입력</span>
+                <span class="ro-desc" style="display:block;">"오늘 기준 5억만큼의 생활" → 물가만큼 목표를 키워서 계산</span></span>
+              </label>
+              <label class="radio-opt" id="basis-future-opt">
+                <input type="radio" name="basis" value="future">
+                <span><span class="ro-title">달성 시점의 금액으로 입력</span>
+                <span class="ro-desc" style="display:block;">은퇴 역산 계산기 '필요 자산'처럼 이미 물가를 반영한 금액</span></span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 03 : 결과 -->
+  <div class="step-label"><div class="step-line"></div><span class="step-text">STEP 03 / 결과</span></div>
+  <div class="verdict" id="verdict">
+    <div class="verdict-label" id="verdict-label">RESULT</div>
+    <div class="verdict-main" id="verdict-main">-</div>
+    <div class="verdict-sub" id="verdict-sub"></div>
+  </div>
+
+  <div class="stat-grid">
+    <div class="stat-card accent"><div class="stat-label" id="s1-label">-</div><div class="stat-value" id="s1-value">-</div><div class="stat-sub" id="s1-sub"></div></div>
+    <div class="stat-card"><div class="stat-label" id="s2-label">-</div><div class="stat-value" id="s2-value">-</div><div class="stat-sub" id="s2-sub"></div></div>
+    <div class="stat-card"><div class="stat-label" id="s3-label">-</div><div class="stat-value" id="s3-value">-</div><div class="stat-sub" id="s3-sub"></div></div>
+    <div class="stat-card accent-green" id="s4-card"><div class="stat-label" id="s4-label">-</div><div class="stat-value" id="s4-value">-</div><div class="stat-sub" id="s4-sub"></div></div>
+  </div>
+
+  <div class="card">
+    <h3 class="chart-title">자산이 목표에 닿는 길</h3>
+    <p class="chart-subtitle" id="growth-subtitle">-</p>
+    <div class="chart-container"><canvas id="growth-chart"></canvas></div>
+  </div>
+
+  <div class="card">
+    <div class="step-label"><div class="step-line"></div><span class="step-text">수익률 시나리오 비교</span></div>
+    <h3 class="chart-title" id="scen-title">수익률이 달라지면?</h3>
+    <p class="chart-subtitle" id="scen-subtitle">-</p>
+    <div class="chart-container sm"><canvas id="scen-chart"></canvas></div>
+    <div class="table-wrap">
+      <table class="data-table scen-table">
+        <thead id="scen-head"></thead>
+        <tbody id="scen-body"></tbody>
+      </table>
+    </div>
+    <p class="input-hint" style="margin-top:12px;">시나리오 수익률은 비교용 가정치이며 특정 상품의 수익률을 뜻하지 않습니다. 과거 수익률이 미래를 보장하지 않습니다.</p>
+  </div>
+
+  <div class="card">
+    <h3 class="chart-title">연차별 상세 데이터</h3>
+    <p class="chart-subtitle" id="table-subtitle">-</p>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>연차</th>
+            <th>누적 원금</th>
+            <th>누적 수익</th>
+            <th>평가액</th>
+            <th id="th-real">실질가치(오늘 돈)</th>
+            <th>그해 목표</th>
+            <th>달성률</th>
+          </tr>
+        </thead>
+        <tbody id="year-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="link-row">
+      <div>
+        <h3 class="chart-title">이 조건 그대로 공유하기</h3>
+        <p class="chart-subtitle" style="margin-bottom:0;">입력한 값이 담긴 주소를 복사합니다. 카페 글이나 메모에 붙여넣으면 같은 화면이 열립니다.</p>
+      </div>
+      <button class="btn" id="copy-link">링크 복사</button>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <div class="insight-label">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D9542B" stroke-width="2"><path d="M12 3l1.9 5.8L20 10l-4.5 3.3L17 20l-5-3.5L7 20l1.5-6.7L4 10l6.1-1.2L12 3z"/></svg>
+      <span class="insight-label-text">KEY INSIGHT</span>
+    </div>
+    <h3 class="insight-title" id="insight-title">-</h3>
+    <p class="insight-desc" id="insight-desc">-</p>
+    <div class="insight-cta">
+      <div class="insight-cta-text">📊 목표를 세웠다면, 어떤 계좌에 어떤 ETF로 담을지가 다음 단계입니다.</div>
+      <a href="https://www.youtube.com/@ttok_jae" target="_blank" rel="noopener" class="cta-link primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        똑재TV 구독하기
+      </a>
+      <a href="https://cafe.naver.com/ttokjae" target="_blank" rel="noopener" class="cta-link secondary">
+        <span class="naver-mark">N</span>
+        평생 ETF 투자 카페 가입
+      </a>
+    </div>
+  </div>
+
+  <footer>
+    ※ 본 계산기는 세금·수수료를 제외한 세전 기준의 단순 계산 도구입니다. 수익률은 매년 일정하다고 가정하며, 실제 투자 결과와 차이가 있을 수 있습니다.<br>
+    세금은 계좌(일반·ISA·연금저축·IRP)와 상품에 따라 달라지므로 실제 수령액은 더 적을 수 있습니다. 특정 상품의 매수·매도 권유가 아닙니다.
+  </footer>
+</div>
+
+<script>
+// ============== 포맷 ==============
+function formatKRW(n) {
+  const neg = n < 0; n = Math.abs(n);
+  let s;
+  if (n >= 100000000) {
+    const eok = n / 100000000;
+    s = (eok >= 100 ? Math.round(eok).toLocaleString() : eok.toFixed(2)) + '억';
+  } else if (n >= 10000) s = Math.round(n / 10000).toLocaleString() + '만';
+  else s = Math.round(n).toLocaleString();
+  return (neg ? '-' : '') + s;
+}
+function formatKRWFull(n) { return Math.round(n).toLocaleString() + '원'; }
+// 만원 입력값 → "5억원", "3억 2,000만원", "3,000만원"
+function formatManwon(m) {
+  m = Math.round(Number(m) || 0);
+  if (m <= 0) return '0원';
+  const eok = Math.floor(m / 10000), man = m % 10000;
+  if (eok && man) return eok.toLocaleString() + '억 ' + man.toLocaleString() + '만원';
+  if (eok) return eok.toLocaleString() + '억원';
+  return man.toLocaleString() + '만원';
+}
+// 원 → 만원 반올림 표기 (월 적립액 등)
+function wonToManText(won) {
+  const m = won / 10000;
+  if (m >= 10000) return formatManwon(Math.round(m));
+  if (m >= 100) return Math.round(m).toLocaleString() + '만원';
+  if (m >= 1) return (Math.round(m * 10) / 10).toLocaleString() + '만원';
+  return Math.round(won).toLocaleString() + '원';
+}
+function yearsMonthsText(months) {
+  const y = Math.floor(months / 12), m = months % 12;
+  if (y && m) return y + '년 ' + m + '개월';
+  if (y) return y + '년';
+  return m + '개월';
+}
+const pct = (v, d = 1) => (Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d) + '%';
+
+// ============== 상태 ==============
+let MODE = 'pmt';
+const MAX_MONTHS = 100 * 12;   // 기간 탐색 상한 100년
+const SCEN_RATES = [3, 5, 7, 9];
+let growthChart = null, scenChart = null;
+
+function readInputs() {
+  const num = (id, d) => { const v = parseFloat(document.getElementById(id).value); return isFinite(v) ? v : d; };
+  const inflationOn = document.getElementById('inflation-on').checked;
+  const basis = document.querySelector('input[name=basis]:checked').value;
+  return {
+    goal: Math.max(0, num('goal', 0)) * 10000,
+    current: Math.max(0, num('current', 0)) * 10000,
+    monthly: Math.max(0, num('monthly', 0)) * 10000,
+    years: Math.max(1, Math.min(60, Math.round(num('years', 20)))),
+    rate: Math.max(-5, Math.min(20, num('rate', 6))) / 100,
+    inflationOn,
+    inflation: inflationOn ? Math.max(0, Math.min(10, num('inflation', 2.5))) / 100 : 0,
+    basis: inflationOn ? basis : 'future',
+  };
+}
+
+// ============== 계산 엔진 ==============
+// 연 수익률 R → 월 복리 r = (1+R)^(1/12) - 1  (은퇴 역산 계산기와 같은 방식)
+const monthlyRate = R => Math.pow(1 + R, 1 / 12) - 1;
+// 월 t 시점의 '그때 돈' 목표: 지금 가치 기준이면 물가만큼 커진다
+function targetAt(inp, months) {
+  if (inp.basis === 'today') return inp.goal * Math.pow(1 + inp.inflation, months / 12);
+  return inp.goal;
+}
+// 미래가치: 매월 말 적립
+function fv(pv, pmt, r, n) {
+  const g = Math.pow(1 + r, n);
+  return pv * g + (r === 0 ? pmt * n : pmt * (g - 1) / r);
+}
+// 필요 월 적립액
+function solvePmt(target, pv, r, n) {
+  const g = Math.pow(1 + r, n);
+  const rest = target - pv * g;
+  if (rest <= 0) return 0;
+  return r === 0 ? rest / n : rest * r / (g - 1);
+}
+// 달성 개월 수 (목표가 물가로 움직여도 월 단위로 탐색), 못 닿으면 null
+function solveMonths(inp, R, pmt) {
+  const r = monthlyRate(R);
+  let a = inp.current;
+  if (a >= targetAt(inp, 0) && inp.goal > 0) return 0;
+  for (let m = 1; m <= MAX_MONTHS; m++) {
+    a = a * (1 + r) + pmt;
+    if (a >= targetAt(inp, m)) return m;
+  }
+  return null;
+}
+// 현재 자산만으로 언제 닿는지 (적립 0)
+function monthsWithoutSaving(inp, R) { return solveMonths(inp, R, 0); }
+
+function compute(inp, R = inp.rate) {
+  const r = monthlyRate(R);
+  const out = { R };
+  if (MODE === 'pmt') {
+    const n = inp.years * 12;
+    out.months = n;
+    out.target = targetAt(inp, n);
+    out.pmt = solvePmt(out.target, inp.current, r, n);
+    out.final = fv(inp.current, out.pmt, r, n);
+  } else if (MODE === 'time') {
+    out.pmt = inp.monthly;
+    out.months = solveMonths(inp, R, inp.monthly);
+    if (out.months !== null) {
+      out.target = targetAt(inp, out.months);
+      out.final = fv(inp.current, out.pmt, r, out.months);
+    }
+  } else {
+    const n = inp.years * 12;
+    out.months = n;
+    out.pmt = inp.monthly;
+    out.target = targetAt(inp, n);
+    out.final = fv(inp.current, inp.monthly, r, n);
+  }
+  if (out.months !== null) {
+    out.principal = inp.current + out.pmt * out.months;
+    out.gain = out.final - out.principal;
+    out.real = out.final / Math.pow(1 + inp.inflation, out.months / 12);
+  }
+  return out;
+}
+
+// 연차별 경로
+function buildPath(inp, pmt, years) {
+  const r = monthlyRate(inp.rate);
+  const rows = [];
+  let a = inp.current, principal = inp.current;
+  rows.push({ year: 0, value: a, principal, target: targetAt(inp, 0), real: a });
+  for (let y = 1; y <= years; y++) {
+    for (let m = 0; m < 12; m++) { a = a * (1 + r) + pmt; principal += pmt; }
+    const months = y * 12;
+    rows.push({
+      year: y, value: a, principal,
+      target: targetAt(inp, months),
+      real: a / Math.pow(1 + inp.inflation, y),
+    });
+  }
+  return rows;
+}
+
+// ============== 렌더 ==============
+function setStat(i, label, value, sub) {
+  document.getElementById('s' + i + '-label').textContent = label;
+  document.getElementById('s' + i + '-value').textContent = value;
+  document.getElementById('s' + i + '-sub').innerHTML = sub || '';
+}
+
+function render() {
+  const inp = readInputs();
+  const res = compute(inp);
+  const goalText = formatManwon(inp.goal / 10000);
+  const infText = pct(inp.inflation * 100);
+  const todayBasis = inp.basis === 'today' && inp.inflation > 0;
+
+  const vLabel = document.getElementById('verdict-label');
+  const vMain = document.getElementById('verdict-main');
+  const vSub = document.getElementById('verdict-sub');
+
+  // 목표 0 방어
+  if (inp.goal <= 0 && MODE !== 'fv') {
+    vLabel.textContent = 'RESULT';
+    vMain.textContent = '목표금액을 입력해 주세요';
+    vSub.textContent = '';
+    [1, 2, 3, 4].forEach(i => setStat(i, '-', '-', ''));
+    drawGrowth(inp, buildPath(inp, 0, 10), null);
+    renderScenarios(inp);
+    renderInsight(inp, res);
+    return;
+  }
+
+  let pathYears, pathPmt;
+  if (MODE === 'pmt') {
+    vLabel.textContent = 'MODE 1 · 필요한 월 적립액';
+    if (res.pmt <= 0) {
+      const mw = monthsWithoutSaving(inp, inp.rate);
+      vMain.innerHTML = `지금 모아둔 돈만으로도 <span class="hl">${inp.years}년 뒤 목표 달성</span>이 가능합니다`;
+      vSub.innerHTML = `추가 적립 없이 연 ${pct(inp.rate * 100)}로 굴리면 ${mw !== null ? '<strong>' + yearsMonthsText(mw) + '</strong> 뒤 목표에 닿습니다.' : '목표에 닿습니다.'}`;
+    } else {
+      vMain.innerHTML = `${goalText}을 ${inp.years}년 안에 모으려면<br>매달 <span class="hl">${wonToManText(res.pmt)}</span>씩 모으면 됩니다`;
+      vSub.innerHTML = todayBasis
+        ? `물가 ${infText}를 반영하면 ${inp.years}년 뒤 목표는 <strong>${formatKRW(res.target)}원</strong>입니다. 지금 돈 ${goalText}과 같은 가치를 맞추는 기준으로 계산했습니다.`
+        : `${inp.years}년 뒤 통장에 <strong>${formatKRW(res.target)}원</strong>이 찍히는 것을 목표로 계산했습니다.${inp.inflation > 0 ? ' 그때 이 돈의 가치는 오늘 돈으로 <strong>' + formatKRW(res.real) + '원</strong>입니다.' : ''}`;
+    }
+    pathYears = inp.years; pathPmt = res.pmt;
+    const delay = inp.years > 5 ? compute({ ...inp, years: inp.years - 5 }) : null;
+    setStat(1, '필요한 월 적립액', wonToManText(res.pmt), `연 ${wonToManText(res.pmt * 12)}`);
+    setStat(2, `${inp.years}년 뒤 목표`, formatKRW(res.target) + '원', todayBasis ? `지금 돈 ${goalText} 가치` : '달성 시점 금액 그대로');
+    setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', `수익 ${formatKRW(Math.max(0, res.gain))}원 · 평가액의 ${pct(Math.max(0, res.gain) / Math.max(1, res.final) * 100, 0)}`);
+    if (delay) {
+      setStat(4, '5년 늦게 시작하면', wonToManText(delay.pmt), `같은 목표를 ${inp.years - 5}년에 · 월 ${wonToManText(Math.max(0, delay.pmt - res.pmt))} 더`);
+    } else {
+      setStat(4, '실질가치(오늘 돈)', formatKRW(res.real) + '원', `물가 ${infText} 반영`);
+    }
+  } else if (MODE === 'time') {
+    vLabel.textContent = 'MODE 2 · 목표 달성 시점';
+    if (res.months === null) {
+      vMain.innerHTML = `이 조건으로는 <span class="hl">100년 안에 목표에 닿지 못합니다</span>`;
+      vSub.innerHTML = inp.rate <= inp.inflation && todayBasis
+        ? `수익률(${pct(inp.rate * 100)})이 물가(${infText})를 넘지 못하면 목표가 자산보다 빨리 커질 수 있습니다. 월 적립액이나 수익률 가정을 올려 보세요.`
+        : '월 적립액을 늘리거나 수익률 가정을 바꿔 보세요.';
+      [1, 2, 3, 4].forEach(i => setStat(i, '-', '-', ''));
+      pathYears = 30; pathPmt = inp.monthly;
+    } else if (res.months === 0) {
+      vMain.innerHTML = `이미 <span class="hl">목표금액에 도달</span>해 있습니다`;
+      vSub.innerHTML = `지금 모아둔 ${formatManwon(inp.current / 10000)}이 목표 ${goalText} 이상입니다.`;
+      setStat(1, '달성까지', '0개월', '이미 달성');
+      setStat(2, '지금 자산', formatKRW(inp.current) + '원', '');
+      setStat(3, '-', '-', ''); setStat(4, '-', '-', '');
+      pathYears = 10; pathPmt = inp.monthly;
+    } else {
+      const now = new Date();
+      const doneAt = new Date(now.getFullYear(), now.getMonth() + res.months, 1);
+      vMain.innerHTML = `매달 ${wonToManText(inp.monthly)}씩이면<br><span class="hl">${yearsMonthsText(res.months)}</span> 뒤 ${goalText}에 닿습니다`;
+      vSub.innerHTML = `오늘 시작하면 <strong>${doneAt.getFullYear()}년 ${doneAt.getMonth() + 1}월</strong> 무렵입니다.` +
+        (todayBasis ? ` 물가 ${infText}를 반영해 그때의 목표는 <strong>${formatKRW(res.target)}원</strong>으로 계산했습니다.` : '');
+      const plus = compute({ ...inp, monthly: inp.monthly + 500000 });
+      setStat(1, '달성까지 걸리는 기간', yearsMonthsText(res.months), `${doneAt.getFullYear()}년 ${doneAt.getMonth() + 1}월 무렵`);
+      setStat(2, '그때의 목표', formatKRW(res.target) + '원', todayBasis ? `지금 돈 ${goalText} 가치` : '달성 시점 금액 그대로');
+      setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', `수익 ${formatKRW(Math.max(0, res.gain))}원`);
+      if (plus.months !== null && plus.months < res.months) {
+        setStat(4, '월 50만원 더 넣으면', yearsMonthsText(plus.months), `${yearsMonthsText(res.months - plus.months)} 앞당겨짐`);
+      } else {
+        setStat(4, '실질가치(오늘 돈)', formatKRW(res.real) + '원', `물가 ${infText} 반영`);
+      }
+      pathYears = Math.min(60, Math.max(1, Math.ceil(res.months / 12)));
+      pathPmt = inp.monthly;
+    }
+  } else {
+    vLabel.textContent = 'MODE 3 · 지금 계획대로면';
+    const ratio = inp.goal > 0 ? res.final / res.target * 100 : null;
+    vMain.innerHTML = `${inp.years}년 뒤 <span class="hl">${formatKRW(res.final)}원</span>이 모입니다`;
+    let sub = `넣은 돈 <strong>${formatKRW(res.principal)}원</strong> + 불어난 돈 <strong>${formatKRW(res.gain)}원</strong>.`;
+    if (inp.inflation > 0) sub += ` 오늘 돈 가치로는 <strong>${formatKRW(res.real)}원</strong>입니다.`;
+    if (ratio !== null) {
+      if (ratio >= 100) sub += ` 목표(${formatKRW(res.target)}원)를 <strong>${pct(ratio - 100, 0)} 넘깁니다</strong>.`;
+      else {
+        const need = solvePmt(res.target, inp.current, monthlyRate(inp.rate), inp.years * 12);
+        sub += ` 목표(${formatKRW(res.target)}원)의 <strong>${pct(ratio, 0)}</strong> 수준이라, 목표를 채우려면 매달 <strong>${wonToManText(need)}</strong>이 필요합니다(지금보다 월 ${wonToManText(need - inp.monthly)} 더).`;
+      }
+    }
+    vSub.innerHTML = sub;
+    setStat(1, `${inp.years}년 뒤 평가액`, formatKRW(res.final) + '원', `원금의 ${(res.final / Math.max(1, res.principal)).toFixed(2)}배`);
+    setStat(2, '내가 넣는 돈', formatKRW(res.principal) + '원', `월 ${wonToManText(inp.monthly)} × ${inp.years * 12}개월 + 지금 자산`);
+    setStat(3, '불어난 돈', formatKRW(res.gain) + '원', `평가액의 ${pct(res.gain / Math.max(1, res.final) * 100, 0)}`);
+    setStat(4, '실질가치(오늘 돈)', formatKRW(res.real) + '원', inp.inflation > 0 ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
+    pathYears = inp.years; pathPmt = inp.monthly;
+  }
+
+  const path = buildPath(inp, pathPmt, pathYears);
+  drawGrowth(inp, path, res);
+  renderTable(inp, path);
+  renderScenarios(inp);
+  renderInsight(inp, res);
+  syncUrl(inp);
+}
+
+// ============== 차트 ==============
+const chartCommonOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { labels: { font: { family: 'Pretendard', size: 13, weight: 600 }, color: '#1A1A1A', usePointStyle: true, padding: 16 } },
+    tooltip: {
+      backgroundColor: '#FBF7F0', titleColor: '#1A1A1A', bodyColor: '#3A2F26', borderColor: '#D9542B', borderWidth: 1.5,
+      padding: 14, titleFont: { family: 'Pretendard', size: 14, weight: 800 }, bodyFont: { family: 'Pretendard', size: 13, weight: 600 },
+      titleSpacing: 6, bodySpacing: 8, titleMarginBottom: 10, caretSize: 8, cornerRadius: 10, usePointStyle: true, boxPadding: 6,
+    }
+  }
+};
+
+const endLabelPlugin = {
+  id: 'endLabel',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart;
+    ctx.save();
+    const labels = [];
+    chart.data.datasets.forEach((ds, i) => {
+      const meta = chart.getDatasetMeta(i);
+      if (meta.hidden) return;
+      const last = ds.data.length - 1;
+      const p = meta.data[last];
+      if (!p) return;
+      labels.push({ x: p.x, y: p.y, color: ds._endLabelColor || ds.borderColor, text: ds._short || ds.label, value: ds.data[last] });
+    });
+    labels.sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labels.length; i++) if (labels[i].y - labels[i - 1].y < 18) labels[i].y = labels[i - 1].y + 18;
+    const isMobile = window.innerWidth < 768;
+    labels.forEach(l => {
+      const fs = isMobile ? 10 : 11;
+      ctx.font = `700 ${fs}px Pretendard, sans-serif`;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const text = `${l.text} ${formatKRW(l.value)}`;
+      const tw = ctx.measureText(text).width;
+      const padX = isMobile ? 6 : 8, padY = isMobile ? 3 : 4;
+      const bx = l.x + 6, bh = fs + padY * 2, by = l.y - bh / 2, bw = tw + padX * 2, r = 4;
+      ctx.fillStyle = '#FBF7F0'; ctx.strokeStyle = l.color; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (typeof ctx.roundRect === 'function') ctx.roundRect(bx, by, bw, bh, r); else ctx.rect(bx, by, bw, bh);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = l.color;
+      ctx.fillText(text, bx + padX, l.y);
+    });
+    ctx.restore();
+  }
+};
+
+function drawGrowth(inp, path, res) {
+  const labels = path.map(p => p.year === 0 ? '지금' : p.year + '년');
+  const isMobile = window.innerWidth < 768;
+  const ds = [
+    { label: '평가액', _short: isMobile ? '평가' : '평가액', data: path.map(p => p.value), borderColor: '#D9542B', backgroundColor: 'rgba(217,84,43,0.08)', borderWidth: 3, fill: true, tension: 0.25, pointRadius: 0, pointHoverRadius: 5 },
+    { label: '목표', _short: '목표', data: path.map(p => p.target), borderColor: '#3A2F26', borderWidth: 2, borderDash: [6, 4], fill: false, tension: 0, pointRadius: 0, pointHoverRadius: 4 },
+    { label: '누적 원금', _short: '원금', data: path.map(p => p.principal), borderColor: '#9B9387', borderWidth: 2, borderDash: [3, 3], fill: false, tension: 0, pointRadius: 0, pointHoverRadius: 4 },
+  ];
+  if (inp.inflation > 0) {
+    ds.push({ label: '실질가치(오늘 돈)', _short: '실질', data: path.map(p => p.real), borderColor: '#5A6B5A', borderWidth: 2, borderDash: [8, 4], fill: false, tension: 0.25, pointRadius: 0, pointHoverRadius: 4 });
+  }
+  const sub = document.getElementById('growth-subtitle');
+  if (inp.basis === 'today' && inp.inflation > 0) {
+    sub.textContent = `점선 '목표'는 물가 ${pct(inp.inflation * 100)}만큼 매년 커집니다. 주황 선이 목표선을 넘는 지점이 달성 시점입니다.`;
+  } else {
+    sub.textContent = `주황 선이 목표선을 넘는 지점이 달성 시점입니다.` + (inp.inflation > 0 ? ' 초록 점선은 같은 돈을 오늘 가치로 바꾼 값입니다.' : '');
+  }
+  if (growthChart) growthChart.destroy();
+  growthChart = new Chart(document.getElementById('growth-chart'), {
+    type: 'line',
+    data: { labels, datasets: ds },
+    options: {
+      ...chartCommonOptions,
+      interaction: { mode: 'index', intersect: false },
+      layout: { padding: { right: isMobile ? 96 : 150, top: 10, bottom: 4, left: 4 } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Pretendard', size: 11, weight: 600 }, color: '#8B8276', maxTicksLimit: isMobile ? 6 : 12 } },
+        y: { grid: { color: '#EFE7DA' }, ticks: { font: { family: 'Pretendard', size: 11, weight: 600 }, color: '#8B8276', callback: v => formatKRW(v) } },
+      },
+      plugins: {
+        ...chartCommonOptions.plugins,
+        legend: { display: false },
+        datalabels: { display: false },
+        tooltip: {
+          ...chartCommonOptions.plugins.tooltip, mode: 'index', intersect: false,
+          itemSort: (a, b) => b.parsed.y - a.parsed.y,
+          callbacks: { label: c => '  ' + c.dataset.label + ': ' + formatKRWFull(c.parsed.y) },
+        },
+      },
+    },
+    plugins: [endLabelPlugin],
+  });
+}
+
+function renderTable(inp, path) {
+  document.getElementById('th-real').style.display = inp.inflation > 0 ? '' : 'none';
+  const hitIdx = path.findIndex(p => p.year > 0 && p.value >= p.target && inp.goal > 0);
+  document.getElementById('table-subtitle').textContent =
+    '매월 말 적립, 연 수익률을 월 복리로 환산해 계산했습니다.' + (hitIdx > 0 ? ` 강조된 행이 처음으로 목표를 넘는 해입니다.` : '');
+  const html = path.filter(p => p.year > 0).map(p => {
+    const rate = inp.goal > 0 ? p.value / p.target * 100 : null;
+    const hl = path.indexOf(p) === hitIdx ? ' class="highlight-row"' : '';
+    return `<tr${hl}>
+      <td>${p.year}년</td>
+      <td class="c-brown">${formatKRW(p.principal)}</td>
+      <td>${formatKRW(p.value - p.principal)}</td>
+      <td class="c-accent">${formatKRW(p.value)}</td>
+      ${inp.inflation > 0 ? `<td class="c-green">${formatKRW(p.real)}</td>` : ''}
+      <td>${inp.goal > 0 ? formatKRW(p.target) : '-'}</td>
+      <td>${rate === null ? '-' : pct(rate, 0)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('year-body').innerHTML = html;
+}
+
+function renderScenarios(inp) {
+  const userR = Math.round(inp.rate * 1000) / 10;
+  const rates = SCEN_RATES.includes(userR) ? SCEN_RATES.slice() : [...SCEN_RATES, userR].sort((a, b) => a - b);
+  const head = document.getElementById('scen-head');
+  const body = document.getElementById('scen-body');
+  const title = document.getElementById('scen-title');
+  const subt = document.getElementById('scen-subtitle');
+  const rows = rates.map(R => ({ R, res: compute(inp, R / 100), mine: R === userR }));
+  const rLabel = R => `연 ${R.toFixed(1)}%`;
+  let chartVals, chartFmt, chartLabel;
+
+  if (MODE === 'pmt') {
+    title.textContent = '수익률이 달라지면 매달 얼마?';
+    subt.textContent = `같은 목표(${formatManwon(inp.goal / 10000)}), 같은 기간(${inp.years}년)일 때 수익률별 필요한 월 적립액입니다.`;
+    head.innerHTML = '<tr><th>가정 수익률</th><th>필요 월 적립액</th><th>내가 넣는 돈</th><th>불어난 돈</th></tr>';
+    body.innerHTML = rows.map(x => `<tr${x.mine ? ' class="highlight-row"' : ''}>
+      <td>${rLabel(x.R)}${x.mine ? '<span class="tag-mini">입력값</span>' : ''}</td>
+      <td class="c-accent">${wonToManText(x.res.pmt)}</td>
+      <td class="c-brown">${formatKRW(x.res.principal)}</td>
+      <td>${formatKRW(Math.max(0, x.res.gain))}</td></tr>`).join('');
+    chartVals = rows.map(x => x.res.pmt); chartFmt = v => wonToManText(v); chartLabel = '필요 월 적립액';
+  } else if (MODE === 'time') {
+    title.textContent = '수익률이 달라지면 몇 년?';
+    subt.textContent = `같은 목표(${formatManwon(inp.goal / 10000)}), 같은 월 적립액(${wonToManText(inp.monthly)})일 때 수익률별 달성 기간입니다.`;
+    head.innerHTML = '<tr><th>가정 수익률</th><th>달성까지</th><th>내가 넣는 돈</th><th>그때의 목표</th></tr>';
+    body.innerHTML = rows.map(x => `<tr${x.mine ? ' class="highlight-row"' : ''}>
+      <td>${rLabel(x.R)}${x.mine ? '<span class="tag-mini">입력값</span>' : ''}</td>
+      <td class="c-accent">${x.res.months === null ? '100년 초과' : yearsMonthsText(x.res.months)}</td>
+      <td class="c-brown">${x.res.months === null ? '-' : formatKRW(x.res.principal)}</td>
+      <td>${x.res.months === null ? '-' : formatKRW(x.res.target)}</td></tr>`).join('');
+    chartVals = rows.map(x => x.res.months === null ? null : Math.round(x.res.months / 12 * 10) / 10);
+    chartFmt = v => v === null ? '' : v + '년'; chartLabel = '달성 기간(년)';
+  } else {
+    title.textContent = '수익률이 달라지면 얼마?';
+    subt.textContent = `같은 월 적립액(${wonToManText(inp.monthly)}), 같은 기간(${inp.years}년)일 때 수익률별 모이는 금액입니다.`;
+    head.innerHTML = `<tr><th>가정 수익률</th><th>${inp.years}년 뒤 평가액</th><th>불어난 돈</th><th>목표 대비</th></tr>`;
+    body.innerHTML = rows.map(x => `<tr${x.mine ? ' class="highlight-row"' : ''}>
+      <td>${rLabel(x.R)}${x.mine ? '<span class="tag-mini">입력값</span>' : ''}</td>
+      <td class="c-accent">${formatKRW(x.res.final)}</td>
+      <td>${formatKRW(x.res.gain)}</td>
+      <td>${inp.goal > 0 ? pct(x.res.final / x.res.target * 100, 0) : '-'}</td></tr>`).join('');
+    chartVals = rows.map(x => x.res.final); chartFmt = v => formatKRW(v); chartLabel = '평가액';
+  }
+
+  if (scenChart) scenChart.destroy();
+  scenChart = new Chart(document.getElementById('scen-chart'), {
+    type: 'bar',
+    data: {
+      labels: rows.map(x => rLabel(x.R)),
+      datasets: [{
+        label: chartLabel, data: chartVals,
+        backgroundColor: rows.map(x => x.mine ? '#D9542B' : '#C4A57B'),
+        borderRadius: 8, maxBarThickness: 64,
+        datalabels: { display: true, anchor: 'end', align: 'top', color: '#3A2F26', font: { family: 'Pretendard', size: 12, weight: 800 }, formatter: chartFmt },
+      }],
+    },
+    options: {
+      ...chartCommonOptions,
+      layout: { padding: { top: 26 } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Pretendard', size: 12, weight: 700 }, color: '#4A4A4A' } },
+        y: { beginAtZero: true, grid: { color: '#EFE7DA' }, ticks: { font: { family: 'Pretendard', size: 11, weight: 600 }, color: '#8B8276', callback: v => MODE === 'time' ? v + '년' : formatKRW(v) } },
+      },
+      plugins: {
+        ...chartCommonOptions.plugins,
+        legend: { display: false },
+        tooltip: { ...chartCommonOptions.plugins.tooltip, callbacks: { label: c => '  ' + chartLabel + ': ' + chartFmt(c.parsed.y) } },
+      },
+    },
+    plugins: [ChartDataLabels],
+  });
+}
+
+function renderInsight(inp, res) {
+  const t = document.getElementById('insight-title');
+  const d = document.getElementById('insight-desc');
+  const lo = compute(inp, 0.03), hi = compute(inp, 0.07);
+  if (inp.goal <= 0 && MODE !== 'fv') {
+    t.textContent = '목표가 숫자로 정해져야 계획이 시작됩니다';
+    d.innerHTML = '막연한 "노후 준비"보다 "○억을 ○년 안에"가 훨씬 실행하기 쉽습니다.';
+    return;
+  }
+  if (MODE === 'pmt') {
+    if (res.pmt > 0) {
+      t.textContent = `수익률 3%와 7%의 차이, 매달 ${wonToManText(Math.max(0, lo.pmt - hi.pmt))}입니다`;
+      d.innerHTML = `같은 ${formatManwon(inp.goal / 10000)}을 ${inp.years}년에 모아도 연 3%로 굴리면 매달 <strong>${wonToManText(lo.pmt)}</strong>, 연 7%면 <strong>${wonToManText(hi.pmt)}</strong>이 필요합니다. ` +
+        `기간이 길수록 이 차이는 더 벌어집니다. 적립액을 늘리기 어렵다면 <strong>어디에 담아 굴리느냐</strong>와 <strong>얼마나 일찍 시작하느냐</strong>가 가장 큰 변수입니다.`;
+    } else {
+      t.textContent = '이미 목표까지 갈 체력이 있습니다';
+      d.innerHTML = '추가 적립 없이도 목표에 닿는 조건입니다. 이럴 땐 목표를 올리거나, 수익률보다 <strong>변동성을 낮추는 쪽</strong>으로 무게를 옮기는 것도 방법입니다.';
+    }
+  } else if (MODE === 'time') {
+    if (res.months === null || res.months === 0) {
+      t.textContent = res.months === 0 ? '목표를 다시 세울 때입니다' : '목표까지의 거리는 적립액과 수익률이 정합니다';
+      d.innerHTML = res.months === 0 ? '이미 목표를 넘었다면 다음 목표(월 현금흐름 등)를 숫자로 다시 정해 보세요.' : '월 적립액이나 수익률 가정을 조금씩 바꿔 보면서 현실적인 조합을 찾아보세요.';
+    } else {
+      const gap = (lo.months === null ? null : lo.months) - (hi.months === null ? 0 : hi.months);
+      t.textContent = lo.months !== null && hi.months !== null
+        ? `수익률 3%면 ${yearsMonthsText(lo.months)}, 7%면 ${yearsMonthsText(hi.months)}`
+        : '수익률이 낮으면 목표가 끝없이 멀어질 수 있습니다';
+      d.innerHTML = (lo.months !== null && hi.months !== null && gap > 0)
+        ? `같은 금액을 넣어도 굴리는 방식에 따라 목표 달성이 <strong>${yearsMonthsText(gap)}</strong> 차이 납니다. 은퇴 시점이 정해져 있다면 이 차이가 곧 몇 년을 더 일하느냐의 차이입니다.`
+        : `연 3%로는 ${lo.months === null ? '100년 안에 닿지 못하는' : '한참 걸리는'} 조건입니다. 물가를 반영한 목표는 매년 커지기 때문에, 물가를 넘는 수익률이 중요합니다.`;
+    }
+  } else {
+    const realLoss = res.final - res.real;
+    t.textContent = inp.inflation > 0
+      ? `${formatKRW(res.final)}원, 오늘 돈으로는 ${formatKRW(res.real)}원입니다`
+      : `수익률 3%면 ${formatKRW(lo.final)}원, 7%면 ${formatKRW(hi.final)}원`;
+    d.innerHTML = inp.inflation > 0
+      ? `물가 ${pct(inp.inflation * 100)}가 ${inp.years}년 쌓이면 통장 숫자 중 <strong>${formatKRW(realLoss)}원</strong>어치는 물가가 가져갑니다. 목표를 세울 때는 '그때의 금액'과 '오늘 가치'를 꼭 구분해서 보세요. 같은 조건에서 수익률 3%면 <strong>${formatKRW(lo.final)}원</strong>, 7%면 <strong>${formatKRW(hi.final)}원</strong>입니다.`
+      : `같은 돈을 같은 기간 넣어도 <strong>${formatKRW(hi.final - lo.final)}원</strong> 차이가 납니다. 적립액만큼 중요한 것이 어디에 담아 굴리느냐입니다.`;
+  }
+}
+
+// ============== 입력 UI ==============
+function updateDisplays() {
+  const v = id => parseFloat(document.getElementById(id).value);
+  const set = (id, text, empty) => { const el = document.getElementById(id); el.textContent = text; el.classList.toggle('empty', !!empty); };
+  const g = v('goal'), c = v('current'), m = v('monthly'), y = v('years'), r = v('rate'), i = v('inflation');
+  set('goal-display', isFinite(g) && g > 0 ? formatManwon(g) : '입력', !(g > 0));
+  set('current-display', isFinite(c) && c > 0 ? formatManwon(c) : '0원', !(c > 0));
+  set('monthly-display', isFinite(m) && m > 0 ? '월 ' + formatManwon(m) : '월 0원', !(m > 0));
+  set('years-display', isFinite(y) ? Math.round(y) + '년' : '-', !isFinite(y));
+  set('rate-display', isFinite(r) ? '연 ' + r.toFixed(1) + '%' : '-', !isFinite(r));
+  set('inflation-display', isFinite(i) ? '연 ' + i.toFixed(1) + '%' : '-', !isFinite(i));
+  document.querySelectorAll('.chips').forEach(box => {
+    const cur = parseFloat(document.getElementById(box.dataset.target).value);
+    box.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', parseFloat(ch.dataset.v) === cur));
+  });
+  const on = document.getElementById('inflation-on').checked;
+  document.getElementById('inflation-body').style.display = on ? '' : 'none';
+  document.querySelectorAll('.radio-opt').forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
+}
+
+function applyMode() {
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === MODE));
+  document.getElementById('years-group').classList.toggle('is-hidden', MODE === 'time');
+  document.getElementById('years-auto-note').classList.toggle('is-hidden', MODE !== 'time');
+  document.getElementById('monthly-group').classList.toggle('is-hidden', MODE === 'pmt');
+  document.getElementById('monthly-auto-note').classList.toggle('is-hidden', MODE !== 'pmt');
+  document.getElementById('goal-label').textContent = MODE === 'fv' ? '목표금액 (비교용, 없으면 0)' : '목표금액';
+}
+
+function rerender() { updateDisplays(); render(); }
+
+function bindEvents() {
+  ['goal', 'current', 'monthly', 'years', 'rate', 'inflation'].forEach(id =>
+    document.getElementById(id).addEventListener('input', rerender));
+  document.getElementById('inflation-on').addEventListener('change', rerender);
+  document.querySelectorAll('input[name=basis]').forEach(r => r.addEventListener('change', rerender));
+  document.querySelectorAll('.chips').forEach(box => box.addEventListener('click', e => {
+    const ch = e.target.closest('.chip'); if (!ch) return;
+    document.getElementById(box.dataset.target).value = ch.dataset.v;
+    rerender();
+  }));
+  document.querySelectorAll('.mode-tab').forEach(t => t.addEventListener('click', () => {
+    MODE = t.dataset.mode; applyMode(); rerender();
+  }));
+  document.getElementById('copy-link').addEventListener('click', copyLink);
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 200); });
+}
+
+// ============== 주소로 값 주고받기 ==============
+// 예: ?from=retirement&mode=pmt&goal=120000&current=3000&monthly=100&years=25&rate=6&basis=future
+// 금액은 만원 단위. 은퇴 역산 계산기의 '필요 자산'은 이미 물가를 반영한 금액이라 basis=future로 넘긴다.
+function buildUrl(inp) {
+  const p = new URLSearchParams();
+  p.set('mode', MODE);
+  p.set('goal', Math.round(inp.goal / 10000));
+  p.set('current', Math.round(inp.current / 10000));
+  if (MODE !== 'pmt') p.set('monthly', Math.round(inp.monthly / 10000));
+  if (MODE !== 'time') p.set('years', inp.years);
+  p.set('rate', Math.round(inp.rate * 1000) / 10);
+  p.set('inflation', inp.inflationOn ? Math.round(inp.inflation * 1000) / 10 : 0);
+  if (inp.inflationOn) p.set('basis', inp.basis);
+  return location.href.split('?')[0].split('#')[0] + '?' + p.toString();
+}
+function syncUrl(inp) {
+  try { history.replaceState(null, '', buildUrl(inp)); } catch (e) { /* file:// 등에서는 무시 */ }
+}
+function copyLink() {
+  const btn = document.getElementById('copy-link');
+  const url = buildUrl(readInputs());
+  const done = ok => { btn.textContent = ok ? '복사했습니다' : '복사 실패 — 주소창을 복사하세요'; setTimeout(() => btn.textContent = '링크 복사', 1800); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(() => done(true), () => done(false));
+  else {
+    const ta = document.createElement('textarea'); ta.value = url; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    ta.remove(); done(ok);
+  }
+}
+function readUrl() {
+  let q; try { q = new URLSearchParams(location.search); } catch (e) { return; }
+  if (!q.toString()) return;
+  const alias = { 'current-assets': 'current', 'monthly-saving': 'monthly' };
+  const ids = ['goal', 'current', 'monthly', 'years', 'rate', 'inflation', 'current-assets', 'monthly-saving'];
+  ids.forEach(k => {
+    if (!q.has(k)) return;
+    const v = parseFloat(q.get(k));
+    if (!isFinite(v) || v < -5 || v > 1e7) return;
+    document.getElementById(alias[k] || k).value = String(Math.round(v * 10) / 10);
+  });
+  if (q.has('inflation') && parseFloat(q.get('inflation')) === 0) {
+    document.getElementById('inflation-on').checked = false;
+    document.getElementById('inflation').value = '2.5';
+  }
+  const basis = q.get('basis');
+  if (basis === 'today' || basis === 'future') document.querySelector(`input[name=basis][value=${basis}]`).checked = true;
+  const mode = q.get('mode');
+  if (['pmt', 'time', 'fv'].includes(mode)) MODE = mode;
+  if (q.get('from') === 'retirement') {
+    if (!q.has('basis')) document.querySelector('input[name=basis][value=future]').checked = true;
+    document.getElementById('from-bar-slot').innerHTML =
+      '<div class="from-bar"><span>은퇴 역산 계산기의 필요 자산을 목표금액으로 가져왔습니다. 이미 물가가 반영된 금액이라 \'달성 시점의 금액\' 기준으로 계산합니다. 모드를 바꾸면 지금 적립 계획(월 적립액)으로도 볼 수 있습니다.</span></div>';
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  readUrl();
+  applyMode();
+  bindEvents();
+  rerender();
+});
+</script>
+</body>
+</html>
