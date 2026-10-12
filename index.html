@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>목표금액 계산기 · 똑재TV</title>
-<meta name="description" content="목표금액까지 매달 얼마씩, 몇 년이 걸릴지, 지금 계획대로면 얼마가 모일지 한 번에 계산합니다. 물가 반영·수익률 시나리오 비교 포함.">
+<meta name="description" content="목표금액까지 매달 얼마씩, 몇 년이 걸릴지, 지금 계획대로면 얼마가 모일지 한 번에 계산합니다. 실제 종목으로 수익률 정하기·물가 반영·수익률 시나리오 비교 포함.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
@@ -267,6 +267,33 @@
   .hub-back:hover { color: var(--accent); }
   footer { text-align: center; font-size: 12.5px; color: var(--ink-mute); font-weight: 500; line-height: 1.8; padding: 24px 0 8px; }
 
+
+  /* 종목으로 수익률 정하기 */
+  .rp-set { margin-top: 20px; }
+  .rp-body { padding-bottom: 18px; }
+  .rp-desc { font-size: 13px; color: var(--ink-soft); font-weight: 600; line-height: 1.6; margin-bottom: 12px; }
+  .rp-row { display: grid; grid-template-columns: minmax(0, 1fr) 92px 36px; gap: 8px; align-items: center; margin-bottom: 4px; }
+  .rp-row select { padding: 10px 12px; font-size: 14px; min-width: 0; }
+  .rp-w { position: relative; }
+  .rp-w input { padding: 10px 26px 10px 10px; font-size: 14px; text-align: right; }
+  .rp-w::after { content: '%'; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 800; color: var(--ink-mute); }
+  .rp-del { width: 36px; height: 36px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--white); color: var(--ink-mute); font-size: 18px; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .rp-del:hover { border-color: var(--accent); color: var(--accent); }
+  .rp-line { font-size: 12px; font-weight: 700; color: var(--brown); margin: 0 0 12px 2px; }
+  .rp-line .cap { color: var(--accent); }
+  .rp-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 6px 0 14px; }
+  .rp-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 13px; font-weight: 700; color: var(--ink-soft); cursor: pointer; line-height: 1.5; }
+  .rp-opt input { margin-top: 3px; accent-color: var(--accent); }
+  .rp-result { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; background: var(--white); border: 1.5px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .rp-total { font-size: 14px; font-weight: 700; color: var(--ink-soft); }
+  .rp-total b { font-size: 22px; font-weight: 900; color: var(--accent); margin-right: 4px; }
+  .rp-warn { font-size: 12px; font-weight: 700; color: var(--accent); margin-top: 8px; }
+  .rp-src { font-size: 12px; color: var(--ink-mute); font-weight: 600; margin-top: 10px; line-height: 1.6; }
+  @media (max-width: 768px) {
+    .rp-row { grid-template-columns: minmax(0, 1fr) 78px 34px; gap: 6px; }
+    .rp-del { width: 34px; height: 34px; }
+    .rp-result .btn { width: 100%; justify-content: center; }
+  }
   @media (max-width: 1100px) {
     .stat-grid { grid-template-columns: 1fr 1fr; }
   }
@@ -472,6 +499,30 @@
       </div>
     </div>
 
+    <details class="adv-set rp-set" id="rp-set">
+      <summary><span class="adv-set-title">종목으로 수익률 정하기</span><span class="adv-set-sum" id="rp-summary">SCHD·QQQ 같은 실제 종목 기준으로 연 수익률 계산</span></summary>
+      <div class="rp-body">
+        <p class="rp-desc">수익률을 몇 %로 넣어야 할지 막막하면 담을 종목을 고르세요. <b>연 수익률 = 배당률 + 주가성장률</b>로 계산해 위 칸에 넣어 드립니다. 배당률은 최근 12개월 실제 분배금 기준이고, 주가성장률은 가정치입니다.</p>
+        <div class="chips" id="rp-quick" style="margin-bottom:14px;">
+          <button class="chip" data-mix="US:SCHD">SCHD</button>
+          <button class="chip" data-mix="US:VOO">S&amp;P500(VOO)</button>
+          <button class="chip" data-mix="US:QQQ">QQQ</button>
+          <button class="chip" data-mix="US:JEPI">JEPI</button>
+          <button class="chip" data-mix="US:SCHD:50,US:QQQ:50">SCHD+QQQ 반반</button>
+        </div>
+        <div id="rp-rows"></div>
+        <div class="rp-tools">
+          <button class="btn ghost" type="button" id="rp-add">+ 종목 추가</button>
+          <label class="rp-opt"><input type="checkbox" id="rp-safe" checked><span>보수적으로 낮춰 잡기<br><span style="font-weight:600;color:var(--ink-mute);">주가성장률 2.5%p↓ · 연 수익률 상한 10%(커버드콜 8%) — 현금흐름 역산 계산기와 같은 기준</span></span></label>
+        </div>
+        <div class="rp-result">
+          <div class="rp-total" id="rp-total">-</div>
+          <button class="btn" type="button" id="rp-apply">이 수익률 적용</button>
+        </div>
+        <div class="rp-warn" id="rp-warn"></div>
+        <div class="rp-src" id="rp-src">배당률 데이터를 불러오는 중입니다…</div>
+      </div>
+    </details>
     <details class="adv-set" id="adv-set">
       <summary><span class="adv-set-title">상세 설정</span><span class="adv-set-sum" id="adv-summary">적립액 증가 없음 (매달 같은 금액)</span></summary>
       <div class="input-group" style="padding-bottom:18px;">
@@ -1287,7 +1338,7 @@ function updateDisplays() {
   set('growth-display', isFinite(gr) && gr > 0 ? '매년 ' + gr.toFixed(1) + '%' : '증가 없음', !(gr > 0));
   document.getElementById('adv-summary').textContent = isFinite(gr) && gr > 0
     ? `적립액 매년 ${gr.toFixed(1)}% 증가` : '적립액 증가 없음 (매달 같은 금액)';
-  document.querySelectorAll('.chips').forEach(box => {
+  document.querySelectorAll('.chips[data-target]').forEach(box => {
     const cur = parseFloat(document.getElementById(box.dataset.target).value);
     box.querySelectorAll('.chip').forEach(ch => ch.classList.toggle('on', parseFloat(ch.dataset.v) === cur));
   });
@@ -1312,7 +1363,7 @@ function bindEvents() {
     document.getElementById(id).addEventListener('input', rerender));
   document.getElementById('inflation-on').addEventListener('change', rerender);
   document.querySelectorAll('input[name=basis]').forEach(r => r.addEventListener('change', rerender));
-  document.querySelectorAll('.chips').forEach(box => box.addEventListener('click', e => {
+  document.querySelectorAll('.chips[data-target]').forEach(box => box.addEventListener('click', e => {
     const ch = e.target.closest('.chip'); if (!ch) return;
     document.getElementById(box.dataset.target).value = ch.dataset.v;
     rerender();
@@ -1322,6 +1373,203 @@ function bindEvents() {
   }));
   document.getElementById('copy-link').addEventListener('click', copyLink);
   let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 200); });
+}
+
+// ============== 종목으로 수익률 정하기 ==============
+// 프리셋 = 배당 재투자 계산기(rediv)와 같은 목록·같은 값 [키, 이름, 그룹, 배당률(데이터 없을 때), 배당성장, 주가성장, 커버드콜]
+// 배당률은 portfolio-sheet-data의 최근 12개월 실지급 기준 값으로 바꿔 쓰고, 못 불러오면 프리셋 예비값을 쓴다.
+const RP_PRESETS = [
+  ['KR:161510', 'PLUS 고배당주', '국내상장 국내 ETF', 4.3, 10.5, 7, 0],
+  ['KR:489030', 'PLUS 고배당주위클리커버드콜', '국내상장 국내 ETF', 23.7, 1, 1, 1],
+  ['KR:498400', 'KODEX 200타겟위클리커버드콜', '국내상장 국내 ETF', 15, 0.5, 3, 1],
+  ['KR:498410', 'KODEX 금융고배당TOP10타겟위클리커버드콜', '국내상장 국내 ETF', 16.5, 0, 0, 1],
+  ['KR:472150', 'TIGER 배당커버드콜액티브', '국내상장 국내 ETF', 22.3, 1, 1, 1],
+  ['KR:466940', 'TIGER 은행고배당플러스TOP10', '국내상장 국내 ETF', 4, 5, 6, 0],
+  ['KR:441800', 'TIME Korea플러스배당액티브', '국내상장 국내 ETF', 8, 8, 9, 0],
+  ['KR:0052D0', 'TIGER 코리아배당다우존스', '국내상장 국내 ETF', 4.4, 7, 7, 0],
+  ['KR:091170', 'KODEX 은행', '국내상장 국내 ETF', 4, 4, 5.5, 0],
+  ['KR:484880', 'SOL 금융지주플러스고배당', '국내상장 국내 ETF', 3.8, 5, 6, 0],
+  ['KR:0153K0', 'KODEX 주주환원고배당주', '국내상장 국내 ETF', 2.4, 7, 7, 0],
+  ['KR:0089D0', 'KODEX 금융고배당TOP10', '국내상장 국내 ETF', 4.3, 5.5, 6, 0],
+  ['KR:489250', 'KODEX 미국배당다우존스', '국내상장 해외 ETF', 3, 9, 8, 0],
+  ['KR:458730', 'TIGER 미국배당다우존스', '국내상장 해외 ETF', 3.1, 9, 8, 0],
+  ['KR:0046Y0', 'ACE 미국배당퀄리티', '국내상장 해외 ETF', 1.4, 9, 8, 0],
+  ['KR:441640', 'KODEX 미국배당커버드콜액티브', '국내상장 해외 ETF', 9.8, 1.5, 4.5, 1],
+  ['KR:458760', 'TIGER 미국배당다우존스타겟커버드콜2호', '국내상장 해외 ETF', 10.7, 1, 4, 1],
+  ['KR:494300', 'KODEX 미국나스닥100데일리커버드콜OTM', '국내상장 해외 ETF', 22.6, 0, 1.5, 1],
+  ['KR:491620', 'RISE 미국테크100데일리고정커버드콜', '국내상장 해외 ETF', 21.4, 0, 0.5, 1],
+  ['KR:490600', 'RISE 미국배당100데일리고정커버드콜', '국내상장 해외 ETF', 17.3, 2, 2, 1],
+  ['KR:441680', 'TIGER 미국나스닥100커버드콜(합성)', '국내상장 해외 ETF', 12.6, 0.5, 3, 1],
+  ['KR:473330', 'SOL 미국30년국채커버드콜(합성)', '국내상장 해외 ETF', 13.4, 0.5, 2, 1],
+  ['KR:0040Y0', 'SOL 팔란티어커버드콜OTM채권혼합', '국내상장 해외 ETF', 27.7, 0, 0, 1],
+  ['KR:005930', '삼성전자', '국내 개별주', 0.5, 4, 6, 0],
+  ['KR:000660', 'SK하이닉스', '국내 개별주', 0.2, 5, 12, 0],
+  ['KR:033780', 'KT&G', '국내 개별주', 3.7, 4, 4, 0],
+  ['KR:105560', 'KB금융', '국내 개별주', 2.9, 8, 7, 0],
+  ['KR:055550', '신한지주', '국내 개별주', 2.8, 7, 6.5, 0],
+  ['KR:086790', '하나금융지주', '국내 개별주', 3.5, 6, 6, 0],
+  ['KR:316140', '우리금융지주', '국내 개별주', 4.2, 5, 5, 0],
+  ['KR:024110', '기업은행', '국내 개별주', 6.2, 4, 4.5, 0],
+  ['KR:005380', '현대차', '국내 개별주', 2.9, 5, 7, 0],
+  ['KR:000270', '기아', '국내 개별주', 6, 5, 7, 0],
+  ['KR:017670', 'SK텔레콤', '국내 개별주', 1.9, 3, 4, 0],
+  ['KR:030200', 'KT', '국내 개별주', 4.6, 4, 4.5, 0],
+  ['KR:005490', 'POSCO홀딩스', '국내 개별주', 2.9, 4, 5, 0],
+  ['US:SCHD', 'SCHD', '미국 직투 (주식·ETF)', 3.2, 9, 8, 0],
+  ['US:JEPI', 'JEPI', '미국 직투 (주식·ETF)', 8.1, 2, 4, 1],
+  ['US:JEPQ', 'JEPQ', '미국 직투 (주식·ETF)', 11.2, 3, 6, 1],
+  ['US:VYM', 'VYM', '미국 직투 (주식·ETF)', 2.3, 7, 7, 0],
+  ['US:VOO', 'VOO', '미국 직투 (주식·ETF)', 1, 6, 10, 0],
+  ['US:QQQ', 'QQQ', '미국 직투 (주식·ETF)', 0.4, 8, 12, 0],
+  ['US:O', 'O', '미국 직투 (주식·ETF)', 6, 4, 3, 0],
+  ['US:KO', 'KO', '미국 직투 (주식·ETF)', 2.4, 5, 6, 0],
+  ['US:PEP', 'PEP', '미국 직투 (주식·ETF)', 4.6, 6, 6, 0],
+  ['US:JNJ', 'JNJ', '미국 직투 (주식·ETF)', 2.1, 6, 6, 0],
+  ['US:PG', 'PG', '미국 직투 (주식·ETF)', 2.9, 5, 7, 0],
+  ['US:MCD', 'MCD', '미국 직투 (주식·ETF)', 3.2, 8, 8, 0],
+  ['US:MO', 'MO', '미국 직투 (주식·ETF)', 6.2, 4, 2, 0],
+  ['US:XOM', 'XOM', '미국 직투 (주식·ETF)', 2.5, 4, 5, 0],
+  ['US:CVX', 'CVX', '미국 직투 (주식·ETF)', 3.4, 5, 5, 0],
+  ['US:T', 'T', '미국 직투 (주식·ETF)', 4.5, 1, 3, 0],
+  ['US:VZ', 'VZ', '미국 직투 (주식·ETF)', 6.1, 2, 3, 0],
+  ['US:AAPL', 'AAPL', '미국 직투 (주식·ETF)', 0.3, 5, 12, 0],
+  ['US:MSFT', 'MSFT', '미국 직투 (주식·ETF)', 0.7, 10, 13, 0],
+];
+const RP_MAX = 5;
+const RP_BASE = 'https://ttokjaetv.github.io/portfolio-sheet-data/data/';
+const RP_SAFE = { haircut: 2.5, trCap: 10, ccCap: 8 };   // 현금흐름 역산 계산기 조합 탐색기 기본 설정과 같음
+const RP = { live: {}, krDate: '', usDate: '', status: 'loading', rows: [{ key: 'US:SCHD', w: 100 }] };
+const rpMap = new Map(RP_PRESETS.map(a => [a[0], { key: a[0], name: a[1], group: a[2], y: a[3], dg: a[4], pg: a[5], cc: !!a[6] }]));
+const rpEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+function rpParseCSV(text) {
+  const rows = []; let row = [], field = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else q = false; } else field += c; }
+    else if (c === '"') q = true;
+    else if (c === ',') { row.push(field); field = ''; }
+    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+    else if (c !== '\r') field += c;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  const head = (rows.shift() || []).map(h => h.replace(/^﻿/, '').trim());
+  return rows.filter(r => r.length > 1).map(r => { const o = {}; head.forEach((h, i) => { o[h] = (r[i] ?? '').trim(); }); return o; });
+}
+async function rpLoad() {
+  const get = n => fetch(RP_BASE + n, { cache: 'no-cache' }).then(r => { if (!r.ok) throw new Error(n); return r.text(); }).then(rpParseCSV);
+  const maxDate = rows => rows.reduce((m, r) => (r['갱신시각'] || '') > m ? r['갱신시각'] : m, '').slice(0, 10);
+  const [kr, us] = await Promise.allSettled([get('dividends.csv'), get('us_dividends.csv')]);
+  if (kr.status === 'fulfilled') { kr.value.forEach(r => { const v = parseFloat(r['배당수익률']); if (isFinite(v)) RP.live['KR:' + r['종목코드']] = v; }); RP.krDate = maxDate(kr.value); }
+  if (us.status === 'fulfilled') { us.value.forEach(r => { const v = parseFloat(r['배당수익률']); if (isFinite(v)) RP.live['US:' + r['티커']] = v; }); RP.usDate = maxDate(us.value); }
+  RP.status = (kr.status === 'fulfilled' || us.status === 'fulfilled') ? 'ok' : 'fail';
+  rpRender();
+}
+// 종목 하나의 배당률·주가성장률 (보수적 보정 포함) — 역산 계산기 eff()와 같은 규칙
+function rpEff(key, safe) {
+  const p0 = rpMap.get(key); if (!p0) return null;
+  const live = RP.live[key];
+  const d = isFinite(live) ? Math.max(0, live) : p0.y;
+  let p = p0.pg - (safe ? RP_SAFE.haircut : 0), capped = false;
+  if (safe) {
+    const lim = p0.cc ? Math.min(RP_SAFE.trCap, RP_SAFE.ccCap) : RP_SAFE.trCap;
+    if (d + p > lim) { p = lim - d; capped = true; }
+  }
+  return { d, p, capped, real: isFinite(live), name: p0.name, cc: p0.cc };
+}
+function rpOptions(sel) {
+  const groups = {};
+  RP_PRESETS.forEach(a => { (groups[a[2]] = groups[a[2]] || []).push(a); });
+  return Object.entries(groups).map(([g, list]) => `<optgroup label="${rpEsc(g)}">` +
+    list.map(a => `<option value="${a[0]}"${a[0] === sel ? ' selected' : ''}>${rpEsc(a[1])}</option>`).join('') + '</optgroup>').join('');
+}
+function rpCalc() {
+  const safe = document.getElementById('rp-safe').checked;
+  const rows = RP.rows.filter(r => rpMap.has(r.key) && r.w > 0);
+  const wsum = rows.reduce((s, r) => s + r.w, 0);
+  if (!rows.length || wsum <= 0) return null;
+  let d = 0, p = 0;
+  rows.forEach(r => { const e = rpEff(r.key, safe); d += e.d * r.w / wsum; p += e.p * r.w / wsum; });
+  return { d, p, total: d + p, wsum };
+}
+function rpRender() {
+  const safe = document.getElementById('rp-safe').checked;
+  document.getElementById('rp-rows').innerHTML = RP.rows.map((r, i) => {
+    const e = rpEff(r.key, safe);
+    const line = e ? `배당률 ${e.d.toFixed(2)}%${e.real ? '' : ' (예비값)'} + 주가성장률 ${e.p.toFixed(1)}% = 연 ${(e.d + e.p).toFixed(2)}%` +
+      (e.capped ? ` <span class="cap">· 상한 ${e.cc ? RP_SAFE.ccCap : RP_SAFE.trCap}% 적용</span>` : '') : '';
+    return `<div class="rp-row" data-i="${i}">
+        <select class="rp-sel" data-i="${i}" aria-label="종목 ${i + 1}">${rpOptions(r.key)}</select>
+        <div class="rp-w"><input type="number" class="rp-wt" data-i="${i}" min="0" max="100" step="5" value="${r.w}" inputmode="decimal" aria-label="비중(%)"></div>
+        <button class="rp-del" type="button" data-i="${i}" aria-label="종목 빼기"${RP.rows.length < 2 ? ' disabled style="opacity:.35;cursor:default;"' : ''}>×</button>
+      </div><div class="rp-line">${line}</div>`;
+  }).join('');
+  document.getElementById('rp-add').style.display = RP.rows.length >= RP_MAX ? 'none' : '';
+  const c = rpCalc();
+  document.getElementById('rp-total').innerHTML = c
+    ? `<b>연 ${c.total.toFixed(2)}%</b> 배당률 ${c.d.toFixed(2)}% + 주가성장률 ${c.p.toFixed(2)}%`
+    : '종목과 비중을 넣어 주세요';
+  document.getElementById('rp-apply').disabled = !c;
+  const warn = c && Math.abs(c.wsum - 100) > 0.01 ? `비중 합계가 ${Math.round(c.wsum * 10) / 10}%라 100%로 맞춰 계산했습니다.` : '';
+  document.getElementById('rp-warn').textContent = warn;
+  const src = RP.status === 'loading' ? '배당률 데이터를 불러오는 중입니다…'
+    : RP.status === 'fail' ? '배당률 데이터를 불러오지 못해 예비값(2026-10 기준)으로 계산했습니다.'
+    : `배당률 = 최근 12개월 분배금 ÷ 종가 (국내 ${RP.krDate || '-'} · 미국 ${RP.usDate || '-'} 기준 · 매주 갱신)`;
+  document.getElementById('rp-src').textContent = src +
+    ' · 주가성장률은 배당 재투자 계산기와 같은 가정치이며 미래 수익을 보장하지 않습니다. 미국 직투는 환율 변동을 반영하지 않았습니다.';
+  document.getElementById('rp-summary').textContent = c
+    ? RP.rows.filter(r => r.w > 0).map(r => rpMap.get(r.key)?.name).filter(Boolean).slice(0, 3).join('·') + (RP.rows.length > 3 ? ' 외' : '') + ` → 연 ${c.total.toFixed(2)}%`
+    : 'SCHD·QQQ 같은 실제 종목 기준으로 연 수익률 계산';
+  document.querySelectorAll('#rp-quick .chip').forEach(ch => {
+    const mix = ch.dataset.mix.split(',').map(x => x.split(':'));
+    const same = mix.length === RP.rows.length && mix.every((m, i) => RP.rows[i].key === m[0] + ':' + m[1] && RP.rows[i].w === (m[2] ? +m[2] : 100));
+    ch.classList.toggle('on', same);
+  });
+}
+function rpBind() {
+  const box = document.getElementById('rp-rows');
+  box.addEventListener('change', e => {
+    const i = +e.target.dataset.i;
+    if (e.target.classList.contains('rp-sel')) { RP.rows[i].key = e.target.value; rpRender(); }
+  });
+  box.addEventListener('input', e => {
+    if (!e.target.classList.contains('rp-wt')) return;
+    const v = parseFloat(e.target.value); RP.rows[+e.target.dataset.i].w = isFinite(v) ? Math.max(0, Math.min(100, v)) : 0;
+    const c = rpCalc(); // 입력 중에는 칸을 다시 그리지 않고 합계만 갱신
+    document.getElementById('rp-total').innerHTML = c ? `<b>연 ${c.total.toFixed(2)}%</b> 배당률 ${c.d.toFixed(2)}% + 주가성장률 ${c.p.toFixed(2)}%` : '종목과 비중을 넣어 주세요';
+    document.getElementById('rp-apply').disabled = !c;
+    document.getElementById('rp-warn').textContent = c && Math.abs(c.wsum - 100) > 0.01 ? `비중 합계가 ${Math.round(c.wsum * 10) / 10}%라 100%로 맞춰 계산했습니다.` : '';
+  });
+  box.addEventListener('focusout', e => { if (e.target.classList.contains('rp-wt')) rpRender(); });
+  box.addEventListener('click', e => {
+    const b = e.target.closest('.rp-del'); if (!b || RP.rows.length < 2) return;
+    RP.rows.splice(+b.dataset.i, 1); rpRender();
+  });
+  document.getElementById('rp-add').addEventListener('click', () => {
+    if (RP.rows.length >= RP_MAX) return;
+    const used = new Set(RP.rows.map(r => r.key));
+    const next = ['US:QQQ', 'US:VOO', 'US:JEPI', 'KR:458730', 'KR:161510'].find(k => !used.has(k)) || 'US:VOO';
+    const share = Math.floor(100 / (RP.rows.length + 1));
+    RP.rows.forEach(r => { r.w = share; });
+    RP.rows.push({ key: next, w: 100 - share * (RP.rows.length) });
+    rpRender();
+  });
+  document.getElementById('rp-quick').addEventListener('click', e => {
+    const ch = e.target.closest('.chip'); if (!ch) return;
+    RP.rows = ch.dataset.mix.split(',').map(x => { const m = x.split(':'); return { key: m[0] + ':' + m[1], w: m[2] ? +m[2] : 100 }; });
+    rpRender();
+  });
+  document.getElementById('rp-safe').addEventListener('change', rpRender);
+  document.getElementById('rp-apply').addEventListener('click', () => {
+    const c = rpCalc(); if (!c) return;
+    const v = Math.max(-5, Math.min(20, Math.round(c.total * 100) / 100));   // 수익률 칸 범위(−5~20%)에 맞춤
+    document.getElementById('rate').value = String(v);
+    rerender();
+    const btn = document.getElementById('rp-apply');
+    btn.textContent = `연 ${v.toFixed(2)}% 적용했습니다`;
+    if (v !== Math.round(c.total * 100) / 100) document.getElementById('rp-warn').textContent = `수익률 칸은 최대 20%까지라 연 ${v.toFixed(2)}%로 넣었습니다.`;
+    setTimeout(() => { btn.textContent = '이 수익률 적용'; }, 1800);
+  });
 }
 
 // ============== 주소로 값 주고받기 ==============
@@ -1385,6 +1633,9 @@ window.addEventListener('DOMContentLoaded', () => {
   readUrl();
   applyMode();
   bindEvents();
+  rpBind();
+  rpRender();
+  rpLoad().catch(() => { RP.status = 'fail'; rpRender(); });
   rerender();
 });
 </script>
