@@ -120,6 +120,9 @@
   .input-hint { font-size: 12px; color: var(--ink-mute); font-weight: 600; margin-top: 6px; }
   .input-wrap { position: relative; }
   .input-wrap input { padding-right: 130px; }
+  /* 숫자 바로 뒤에 붙는 단위 (만원·년·%) — 위치는 JS가 글자 폭을 재서 맞춘다 */
+  .input-unit { position: absolute; top: 50%; transform: translateY(-50%); left: 0; pointer-events: none;
+    font-size: 15px; font-weight: 700; color: var(--ink-mute); white-space: nowrap; visibility: hidden; }
   .input-currency {
     position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
     background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800;
@@ -428,7 +431,7 @@
         <div class="input-group">
           <label class="label" for="goal" id="goal-label">목표금액</label>
           <div class="input-wrap">
-            <input type="number" id="goal" value="50000" step="1000" min="0">
+            <input type="number" id="goal" data-unit="만원" value="50000" step="1000" min="0">
             <span class="input-currency" id="goal-display">5억원</span>
           </div>
           <div class="chips" data-target="goal">
@@ -441,7 +444,7 @@
         <div class="input-group" id="years-group">
           <label class="label" for="years">투자 기간</label>
           <div class="input-wrap">
-            <input type="number" id="years" value="20" step="1" min="1" max="80">
+            <input type="number" id="years" data-unit="년" value="20" step="1" min="1" max="80">
             <span class="input-currency" id="years-display">20년</span>
           </div>
           <div class="chips" data-target="years">
@@ -461,7 +464,7 @@
         <div class="input-group">
           <label class="label" for="current">현재 투자자산</label>
           <div class="input-wrap">
-            <input type="number" id="current" value="3000" step="100" min="0">
+            <input type="number" id="current" data-unit="만원" value="3000" step="100" min="0">
             <span class="input-currency" id="current-display">3,000만원</span>
           </div>
           <div class="input-hint">이 목표에 쓸 돈만 · 없으면 0</div>
@@ -469,7 +472,7 @@
         <div class="input-group" id="monthly-group">
           <label class="label" for="monthly">월 적립액</label>
           <div class="input-wrap">
-            <input type="number" id="monthly" value="100" step="10" min="0">
+            <input type="number" id="monthly" data-unit="만원" value="100" step="10" min="0">
             <span class="input-currency" id="monthly-display">월 100만원</span>
           </div>
           <div class="chips" data-target="monthly">
@@ -485,7 +488,7 @@
         <div class="input-group">
           <label class="label" for="rate">연 수익률 (세전)</label>
           <div class="input-wrap">
-            <input type="number" id="rate" value="6" step="any" min="-5" max="20">
+            <input type="number" id="rate" data-unit="%" value="6" step="any" min="-5" max="20">
             <span class="input-currency" id="rate-display">연 6.0%</span>
           </div>
           <div class="chips" data-target="rate">
@@ -528,7 +531,7 @@
       <div class="input-group" style="padding-bottom:18px;">
         <label class="label" for="growth">적립액 매년 증가율</label>
         <div class="input-wrap">
-          <input type="number" id="growth" value="0" step="0.5" min="0" max="20">
+          <input type="number" id="growth" data-unit="%" value="0" step="0.5" min="0" max="20">
           <span class="input-currency" id="growth-display">증가 없음</span>
         </div>
         <div class="chips" data-target="growth">
@@ -557,7 +560,7 @@
           <div class="input-group">
             <label class="label" for="inflation">물가상승률 (연)</label>
             <div class="input-wrap">
-              <input type="number" id="inflation" value="2.5" step="0.1" min="0" max="10">
+              <input type="number" id="inflation" data-unit="%" value="2.5" step="0.1" min="0" max="10">
               <span class="input-currency" id="inflation-display">연 2.5%</span>
             </div>
             <div class="input-hint">한국은행 물가안정목표 2.0% · 다른 똑재TV 계산기와 같은 2.5%가 기본값</div>
@@ -1323,6 +1326,24 @@ function renderInsight(inp, res) {
   }
 }
 
+// ============== 입력칸 숫자 뒤 단위 ==============
+// input에 data-unit이 있으면 입력한 숫자 바로 뒤에 단위(만원·년·%)를 붙여 보여 준다.
+const unitCanvas = document.createElement('canvas').getContext('2d');
+function placeUnits() {
+  document.querySelectorAll('.input-wrap input[data-unit]').forEach(inp => {
+    let tag = inp.parentNode.querySelector('.input-unit');
+    if (!tag) { tag = document.createElement('span'); tag.className = 'input-unit'; tag.textContent = inp.dataset.unit; inp.after(tag); }
+    const cs = getComputedStyle(inp);
+    if (inp.value === '' || !inp.offsetWidth) { tag.style.visibility = 'hidden'; return; }
+    unitCanvas.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+    const w = unitCanvas.measureText(inp.value).width;
+    const left = parseFloat(cs.paddingLeft) + parseFloat(cs.borderLeftWidth) + w + 4 - inp.scrollLeft;
+    tag.style.left = Math.round(left) + 'px';
+    tag.style.fontSize = cs.fontSize;
+    tag.style.visibility = left + tag.offsetWidth < inp.clientWidth - parseFloat(cs.paddingRight) + 8 ? 'visible' : 'hidden';
+  });
+}
+
 // ============== 입력 UI ==============
 function updateDisplays() {
   const v = id => parseFloat(document.getElementById(id).value);
@@ -1356,7 +1377,7 @@ function applyMode() {
   document.getElementById('goal-label').textContent = MODE === 'fv' ? '목표금액 (비교용, 없으면 0)' : '목표금액';
 }
 
-function rerender() { updateDisplays(); render(); }
+function rerender() { updateDisplays(); placeUnits(); render(); }
 
 function bindEvents() {
   ['goal', 'current', 'monthly', 'years', 'rate', 'inflation', 'growth'].forEach(id =>
@@ -1372,7 +1393,8 @@ function bindEvents() {
     MODE = t.dataset.mode; applyMode(); rerender();
   }));
   document.getElementById('copy-link').addEventListener('click', copyLink);
-  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 200); });
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { placeUnits(); render(); }, 200); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(placeUnits);   // 웹폰트가 늦게 뜨면 폭을 다시 잰다
 }
 
 // ============== 종목으로 수익률 정하기 ==============
