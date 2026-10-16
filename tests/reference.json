@@ -1,0 +1,536 @@
+{
+ "cases": {
+  "기본: 5억·3천만·20년·6%·물가2.5%·지금 돈 기준": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 1594690.22723924,
+    "target": 819308220.1451972,
+    "final": 819308220.1451969,
+    "principal": 412725654.5374193,
+    "real": 499999999.9999999
+   }
+  },
+  "미래 금액 기준(명목 5억)": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "future",
+    "skip": 0,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 890497.4275430143,
+    "target": 500000000,
+    "final": 500000000.0000005,
+    "principal": 243719382.61032343,
+    "real": 305135471.4294157
+   }
+  },
+  "적립액 매년 2.5% 증가": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.025,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 1308977.9314482305,
+    "target": 819308220.1451972,
+    "final": 819308220.1451966,
+    "principal": 431248716.9600737,
+    "real": 499999999.99999964
+   }
+  },
+  "5년 늦게 시작(모아둔 돈도 5년 묵힘)": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 60,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 2605020.802213896,
+    "target": 819308220.1451972,
+    "final": 819308220.145197,
+    "principal": 498903744.3985027,
+    "real": 499999999.99999994
+   }
+  },
+  "5년 늦게 시작 + 미래 금액 기준": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "future",
+    "skip": 60,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 1492106.9865448698,
+    "target": 500000000,
+    "final": 500000000.0000004,
+    "principal": 298579257.57807714,
+    "real": 305135471.4294157
+   }
+  },
+  "수익률 0%": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.0,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.0,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 3288784.2506049946,
+    "target": 819308220.1451972,
+    "final": 819308220.145197,
+    "principal": 819308220.145197,
+    "real": 499999999.99999994
+   }
+  },
+  "수익률 -3%": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": -0.03,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": -0.03,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 4462088.059113596,
+    "target": 819308220.1451972,
+    "final": 819308220.1451972,
+    "principal": 1100901134.1872668,
+    "real": 500000000.0
+   }
+  },
+  "수익률 = 물가 = 증가율 2.5%": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.025,
+    "growth": 0.025,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.025,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 1984652.245993618,
+    "target": 819308220.1451972,
+    "final": 819308220.1451972,
+    "principal": 638367145.2243767,
+    "real": 500000000.0
+   }
+  },
+  "수익률 1% < 물가 4%": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.01,
+    "growth": 0.0,
+    "inflation": 0.04,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.01,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 3989482.2492756248,
+    "target": 1095561571.5167105,
+    "final": 1095561571.5167093,
+    "principal": 987475739.8261566,
+    "real": 499999999.9999995
+   }
+  },
+  "6억 보유·수익률 1%·물가 4%(지금은 목표 초과)": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 600000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.01,
+    "growth": 0.0,
+    "inflation": 0.04,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.01,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 1369242.647523582,
+    "target": 1095561571.5167105,
+    "final": 1095561571.5166984,
+    "principal": 928618235.405674,
+    "real": 499999999.9999945
+   }
+  },
+  "모아둔 돈만으로 충분(6억·6%)": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 600000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 0.0,
+    "target": 819308220.1451972,
+    "final": 1924281283.3277118,
+    "principal": 600000000.0,
+    "real": 1174332953.1020038
+   }
+  },
+  "기간 1년": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 1,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 38997192.6126733,
+    "target": 512499999.99999994,
+    "final": 512499999.9999998,
+    "principal": 497966311.35207945,
+    "real": 499999999.9999999
+   }
+  },
+  "연 비용 0.5% 반영(7% → 실효)": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.0646500000000001,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0,
+    "rate_gross": 0.07,
+    "fee": 0.005
+   },
+   "expect": {
+    "pmt": 1495153.0745396465,
+    "target": 819308220.1451972,
+    "final": 819308220.1451961,
+    "principal": 388836737.88951766,
+    "real": 499999999.99999934
+   }
+  },
+  "물가 반영 끔": {
+   "mode": "pmt",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 0,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.0,
+    "basis": "future",
+    "skip": 0,
+    "rate_gross": 0.06,
+    "fee": 0.0
+   },
+   "expect": {
+    "pmt": 890497.4275430143,
+    "target": 500000000,
+    "final": 500000000.0000005,
+    "principal": 243719382.61032343,
+    "real": 500000000.0000005
+   }
+  },
+  "월 100만·명목 5억": {
+   "mode": "time",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "future",
+    "skip": 0
+   },
+   "expect": {
+    "months": 226,
+    "final": 500026951.9390253,
+    "principal": 256000000.0,
+    "target": 500000000
+   }
+  },
+  "월 100만·지금 돈 5억": {
+   "mode": "time",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0
+   },
+   "expect": {
+    "months": 337,
+    "final": 1003922439.5148283,
+    "principal": 367000000.0,
+    "target": 1000303735.8046998
+   }
+  },
+  "월 100만·5년 늦게 시작": {
+   "mode": "time",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "future",
+    "skip": 60
+   },
+   "expect": {
+    "months": 286,
+    "final": 500026951.9390253,
+    "principal": 256000000.0,
+    "target": 500000000
+   }
+  },
+  "수익률 0%·월 100만·5천만": {
+   "mode": "time",
+   "inp": {
+    "goal": 50000000,
+    "current": 0,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.0,
+    "growth": 0.0,
+    "inflation": 0.0,
+    "basis": "future",
+    "skip": 0
+   },
+   "expect": {
+    "months": 50,
+    "final": 50000000.0,
+    "principal": 50000000.0,
+    "target": 50000000
+   }
+  },
+  "100년 안에 못 닿음": {
+   "mode": "time",
+   "inp": {
+    "goal": 500000000,
+    "current": 0,
+    "monthly": 100000,
+    "years": 20,
+    "rate": 0.02,
+    "growth": 0.0,
+    "inflation": 0.03,
+    "basis": "today",
+    "skip": 0
+   },
+   "expect": {
+    "months": null
+   }
+  },
+  "이미 도달": {
+   "mode": "time",
+   "inp": {
+    "goal": 50000000,
+    "current": 100000000,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0
+   },
+   "expect": {
+    "months": 0
+   }
+  },
+  "월 100만·20년": {
+   "mode": "fv",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0
+   },
+   "expect": {
+    "final": 549652696.7155064,
+    "principal": 270000000.0,
+    "target": 819308220.1451972,
+    "real": 335437069.4694711
+   }
+  },
+  "월 100만·20년·5년 늦게 시작": {
+   "mode": "fv",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.0,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 60
+   },
+   "expect": {
+    "final": 358808648.2687834,
+    "principal": 210000000.0,
+    "target": 819308220.1451972,
+    "real": 218970492.08489305
+   }
+  },
+  "월 100만·20년·매년 3% 증가": {
+   "mode": "fv",
+   "inp": {
+    "goal": 500000000,
+    "current": 30000000,
+    "monthly": 1000000,
+    "years": 20,
+    "rate": 0.06,
+    "growth": 0.03,
+    "inflation": 0.025,
+    "basis": "today",
+    "skip": 0
+   },
+   "expect": {
+    "final": 671872896.5650581,
+    "principal": 352444493.86776584,
+    "target": 819308220.1451972,
+    "real": 410024506.06805176
+   }
+  }
+ },
+ "below": {
+  "6억 보유·5억 목표·1%·물가4%·적립 0": 75,
+  "6억 보유·5억 목표·1%·물가4%·월 100만": 172,
+  "6억 보유·5억 목표·6%·물가2.5%(안 떨어짐)": null,
+  "6억 보유·명목 5억·-3%": 72
+ },
+ "path": {
+  "pmt": 1594690.22723924,
+  "rows": {
+   "1": {
+    "value": 51456994.28283419,
+    "principal": 49136282.72687085,
+    "real": 50201945.64178946
+   },
+   "5": {
+    "value": 150955071.41452482,
+    "principal": 125681413.63435419,
+    "real": 133422287.10612865
+   },
+   "10": {
+    "value": 312820241.7218776,
+    "principal": 221362827.26870918,
+    "real": 244374672.86058646
+   },
+   "15": {
+    "value": 529432352.7497572,
+    "principal": 317044240.90306425,
+    "real": 365554804.2499356
+   },
+   "20": {
+    "value": 819308220.1451969,
+    "principal": 412725654.5374193,
+    "real": 499999999.9999999
+   }
+  }
+ }
+}
