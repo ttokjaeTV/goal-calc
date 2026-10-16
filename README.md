@@ -38,3 +38,10 @@ node tests/engine.test.js
 
 - `from=retirement`: 현금흐름 역산 계산기에서 넘어온 경우 안내 문구를 띄우고, 필요 자산은 이미 물가가 반영된 금액이므로 `basis=future`로 계산
 - `inflation=0`이면 물가 반영을 끔
+
+## 자동 테스트와 실패 알림
+
+- main에 푸시할 때마다 GitHub Actions가 `계산 테스트`를 자동으로 돌립니다 (`.github/workflows/test.yml`). Actions 탭에서 손으로도 돌릴 수 있습니다.
+- 실패하면 저장소에 **'계산 테스트 실패' 이슈**가 열리고 @bujajoon·@ttokjae-collab 을 멘션해 GitHub 알림(메일·GitHub 앱 푸시)이 갑니다. 이미 열린 실패 이슈가 있으면 댓글만 추가합니다.
+- 고쳐서 다시 통과하면 그 이슈는 자동으로 닫힙니다.
+- 메일이 안 오면 GitHub → Settings → Notifications → Participating, @mentions and custom 에서 Email이 켜져 있는지 확인합니다.

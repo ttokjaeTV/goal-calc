@@ -1,0 +1,79 @@
+# 계산 엔진 회귀 테스트 — 푸시할 때마다 자동 실행
+# 실패하면 '계산 테스트 실패' 이슈를 열고 @bujajoon·@ttokjae-collab 을 멘션해 알림(메일·앱)을 보낸다.
+# 이미 열린 실패 이슈가 있으면 새로 만들지 않고 댓글만 단다. 다시 통과하면 그 이슈를 자동으로 닫는다.
+name: 계산 테스트
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:   # Actions 탭에서 손으로도 돌릴 수 있게
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 기준 답안(reference.json)이 reference.py와 맞는지 확인
+      # reference.py만 고치고 다시 만들지 않았으면 여기서 실패한다
+      - name: 기준 답안 최신 여부 확인
+        run: |
+          python3 tests/reference.py > /dev/null
+          if ! git diff --quiet -- tests/reference.json; then
+            echo "::error::tests/reference.json 이 reference.py 결과와 다릅니다. 'python3 tests/reference.py'를 실행해 다시 만든 뒤 커밋하세요."
+            git diff --stat -- tests/reference.json
+            exit 1
+          fi
+
+      - name: 계산 엔진 테스트
+        run: node tests/engine.test.js
+
+      # ---------- 알림 ----------
+      - name: 실패 알림 (이슈 열기·댓글)
+        if: failure() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          node tests/engine.test.js > test-output.txt 2>&1 || true
+          {
+            echo "@bujajoon @ttokjae-collab 목표금액 계산기 계산 테스트가 실패했습니다."
+            echo
+            echo "- 커밋: ${GITHUB_SHA::7} — $(git log -1 --pretty=%s)"
+            echo "- 실행 기록: $RUN_URL"
+            echo
+            echo "이 커밋으로 계산 결과가 기준 답안과 달라졌습니다. 사이트에는 이미 배포됐을 수 있으니 확인 후 되돌리거나 고쳐 주세요."
+            echo
+            echo '```'
+            tail -n 40 test-output.txt
+            echo '```'
+          } > body.md
+          num=$(gh issue list --state open --search "계산 테스트 실패 in:title" --json number --jq '.[0].number')
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body-file body.md
+          else
+            gh issue create --title "계산 테스트 실패" --body-file body.md
+          fi
+
+      - name: 통과하면 열린 실패 이슈 닫기
+        if: success() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for num in $(gh issue list --state open --search "계산 테스트 실패 in:title" --json number --jq '.[].number'); do
+            gh issue close "$num" --comment "다시 통과했습니다 (${GITHUB_SHA::7}). 자동으로 닫습니다."
+          done
