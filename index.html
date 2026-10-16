@@ -719,7 +719,7 @@
             <th>평가액</th>
             <th id="th-real">오늘 돈 가치(실질)</th>
             <th>그해 목표</th>
-            <th>달성률</th>
+            <th>그해 목표 대비</th>
           </tr>
         </thead>
         <tbody id="year-body"></tbody>
@@ -763,13 +763,15 @@
   <div class="method-box">
     <h3>계산 방법과 가정</h3>
     <ul>
-      <li>매달 말에 적립하고, 연 수익률을 월 복리로 바꿔 굴립니다. 월 수익률 = (1 + 연 수익률)<sup>1/12</sup> − 1 입니다.</li>
+      <li>매달 말에 적립하고, 연 수익률을 월 복리로 바꿔 굴립니다. 월 수익률 = (1 + 연 수익률)<sup>1/12</sup> − 1 입니다(연 6%면 월 약 0.487%). 1년을 굴렸을 때 정확히 입력한 연 수익률이 되도록 맞춘 방식입니다.</li>
+      <li>엑셀 PMT 함수나 은행 적금 계산기는 연 수익률을 12로 나눈 값(연 6% → 월 0.5%)을 써서, 같은 조건이라도 필요 월 적립액이 이 계산기보다 조금 적게 나옵니다(연 6%·20년이면 약 2%). 수익률이 높고 기간이 길수록 차이가 커지며, 계산 방식 차이이지 오류가 아닙니다.</li>
       <li>상세 설정에 연 비용을 넣으면 실효 수익률 = (1 + 수익률) × (1 − 비용) − 1 로 바꿔 결과·시나리오·하나만 바꾸면 표·연차별 표·내려받기에 똑같이 씁니다.</li>
       <li>'지금 돈 가치로 입력'을 고르면 목표가 해마다 물가만큼 커집니다(목표 × (1 + 물가)<sup>년수</sup>). 오늘 돈 가치(실질)는 평가액을 같은 비율로 나눈 값입니다.</li>
       <li>상세 설정의 '물가만큼'은 입력한 물가상승률을 적립액 증가율로 그대로 쓰는 것입니다. 결과 상자와 '하나만 바꾸면?' 표에는 지금 계획과 '해마다 물가만큼 늘린 경우'(이미 물가만큼이면 '늘리지 않은 경우')를 나란히 보여 줍니다.</li>
       <li>자산 그래프의 '오늘 돈 가치(실질)'는 평가액·목표·누적 원금을 모두 (1 + 물가)<sup>경과 연수</sup>로 나눈 값입니다. 둘 다 같은 비율로 나누므로 목표를 넘는 시점은 어느 기준으로 봐도 같습니다.</li>
       <li>적립액 증가율은 1년에 한 번, 해가 바뀔 때 올립니다. 몇 년 걸리나(MODE 2)는 한 달씩 굴려 처음 목표를 넘는 달을 찾고, 100년이 넘으면 '닿지 못함'으로 봅니다.</li>
-      <li>'시작을 5년 늦추면'은 지금 모아둔 돈은 그대로 굴러가고, 매달 적립만 5년 뒤부터 시작하는 경우입니다. 목표 시점(기간)은 바꾸지 않습니다.</li>
+      <li>'시작을 5년 늦추면'은 투자 자체를 5년 뒤에 시작하는 경우입니다. 지금 모아둔 돈은 그동안 수익 없이 묵혀 두고, 5년 뒤부터 매달 적립과 함께 굴립니다. 목표 시점(기간)은 바꾸지 않습니다.</li>
+      <li>연차별 표의 '그해 목표 대비'는 그해 평가액 ÷ 그해 목표입니다. 지금 돈 가치로 입력했다면 그해 목표도 물가만큼 커지므로, 오늘 돈 가치(실질) ÷ 처음 입력한 목표와 같은 값입니다. 마지막 해 목표로 나눈 비율이 아닙니다.</li>
       <li>수익률은 해마다 똑같다고 가정합니다. 실제로는 오르내림이 있어 같은 평균 수익률이라도 결과가 달라질 수 있습니다.</li>
     </ul>
     <h3>계산에 넣지 않은 것</h3>
@@ -872,7 +874,7 @@ const TJX = (() => {
 function formatKRW(n) {
   const neg = n < 0; n = Math.abs(n);
   let s;
-  if (n >= 100000000) {
+  if (n >= 99995000) {   // 9,999.5만원 이상은 반올림하면 1억이라 '10,000만'이 아니라 '1.00억'으로
     const eok = n / 100000000;
     s = (eok >= 100 ? Math.round(eok).toLocaleString() : eok.toFixed(2)) + '억';
   } else if (n >= 10000) s = Math.round(n / 10000).toLocaleString() + '만';
@@ -966,24 +968,25 @@ function principalFactor(n, g) {
   for (let m = 1; m <= n; m++) s += stepUp(g, m);
   return s;
 }
-// 미래가치: 매월 말 적립 (g = 적립액 매년 증가율, skip = 적립을 늦게 시작하는 개월 수)
+// 미래가치: 매월 말 적립 (g = 적립액 매년 증가율, skip = 투자를 늦게 시작하는 개월 수)
+// skip: 그동안 지금 자산은 현금으로 묵혀 두고(수익 0%), 지금 자산·적립 모두 n−skip개월만 굴린다
 function fv(pv, pmt, r, n, g = 0, skip = 0) {
-  return pv * Math.pow(1 + r, n) + pmt * annuityFactor(r, Math.max(0, n - skip), g);
+  const live = Math.max(0, n - skip);
+  return pv * Math.pow(1 + r, live) + pmt * annuityFactor(r, live, g);
 }
-// 필요 월 적립액 (첫해 기준)
-// skip: 적립을 늦게 시작하는 개월 수 (지금 자산은 n개월 내내 굴러가고, 적립은 n−skip개월만)
+// 필요 월 적립액 (첫해 기준) — skip은 fv()와 같은 뜻
 function solvePmt(target, pv, r, n, g = 0, skip = 0) {
-  const rest = target - pv * Math.pow(1 + r, n);
+  const rest = target - pv * Math.pow(1 + r, Math.max(0, n - skip));
   if (rest <= 0) return 0;
   return rest / annuityFactor(r, n - skip, g);
 }
 // 달성 개월 수 (목표가 물가로 움직여도 월 단위로 탐색), 못 닿으면 null
 function solveMonths(inp, R, pmt) {
-  const r = monthlyRate(R), skip = inp.skip || 0;   // skip: 적립을 늦게 시작하는 개월 수 (기본 0)
+  const r = monthlyRate(R), skip = inp.skip || 0;   // skip: 투자를 늦게 시작하는 개월 수 (그동안 지금 자산은 묵혀 둠, 기본 0)
   let a = inp.current;
   if (a >= targetAt(inp, 0) && inp.goal > 0) return 0;
   for (let m = 1; m <= MAX_MONTHS; m++) {
-    a = a * (1 + r) + (m > skip ? pmt * stepUp(inp.growth || 0, m - skip) : 0);
+    if (m > skip) a = a * (1 + r) + pmt * stepUp(inp.growth || 0, m - skip);
     if (a >= targetAt(inp, m)) return m;
   }
   return null;
@@ -991,7 +994,7 @@ function solveMonths(inp, R, pmt) {
 // 현재 자산만으로 언제 닿는지 (적립 0)
 function monthsWithoutSaving(inp, R) { return solveMonths(inp, R, 0); }
 
-// inp.skip(개월)을 주면 지금 자산은 그대로 굴리고 적립만 그만큼 늦게 시작 ('하나만 바꾸면?' 표의 5년 늦게 시작)
+// inp.skip(개월)을 주면 투자 전체(지금 자산·적립)를 그만큼 늦게 시작 ('하나만 바꾸면?' 표의 5년 늦게 시작)
 function compute(inp, R = inp.rate) {
   const r = monthlyRate(R);
   const skip = inp.skip || 0;
@@ -1133,14 +1136,14 @@ function render() {
         : `${inp.years}년 뒤 통장에 <strong>${formatKRW(res.target)}원</strong>이 찍히는 것을 목표로 계산했습니다.${inp.inflation > 0 ? ' 그때 이 돈의 가치는 오늘 돈으로 <strong>' + formatKRW(res.real) + '원</strong>입니다.' : ''}`;
     }
     pathYears = inp.years; pathPmt = res.pmt;
-    // 5년 늦게 시작: 같은 목표·같은 달성 시점, 적립만 5년 늦게 시작 (지금 자산은 그대로 굴러감)
+    // 5년 늦게 시작: 같은 목표·같은 달성 시점, 투자 전체를 5년 늦게 시작 (지금 자산도 5년 묵힌 뒤 굴림)
     const delay = inp.years > 5 ? { pmt: solvePmt(res.target, inp.current, monthlyRate(inp.rate), inp.years * 12, inp.growth, 60) } : null;
     setStat(1, gOn ? '필요한 월 적립액 (첫해)' : '필요한 월 적립액', wonToManText(res.pmt),
       gOn ? `매년 ${gPct}씩 늘려 마지막 해 월 ${wonToManText(res.lastPmt)}` : `연 ${wonToManText(res.pmt * 12)}`);
     setStat(2, `${inp.years}년 뒤 목표`, formatKRW(res.target) + '원', todayBasis ? `지금 돈 ${goalText} 가치` : '달성 시점 금액 그대로');
-    setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', `수익 ${formatKRW(Math.max(0, res.gain))}원 · 평가액의 ${pct(Math.max(0, res.gain) / Math.max(1, res.final) * 100, 0)}`);
-    if (delay) {
-      setStat(4, '5년 늦게 시작하면', wonToManText(delay.pmt), `같은 목표·같은 시점, 적립 ${inp.years - 5}년 · 월 ${wonToManText(Math.max(0, delay.pmt - res.pmt))} 더`);
+    setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', res.gain < 0 ? `손실 ${formatKRW(-res.gain)}원 · 넣은 돈보다 적게 남음` : `수익 ${formatKRW(res.gain)}원 · 평가액의 ${pct(res.gain / Math.max(1, res.final) * 100, 0)}`);
+    if (delay && delay.pmt > 0) {   // 늦게 시작해도 적립이 필요 없으면 '월 0원 더' 대신 실질 가치를 보여 준다
+      setStat(4, '5년 늦게 시작하면', wonToManText(delay.pmt), `같은 목표·같은 시점, ${inp.current > 0 ? '모아둔 돈까지 ' : ''}${inp.years - 5}년만 굴림 · 월 ${wonToManText(Math.max(0, delay.pmt - res.pmt))} 더`);
     } else {
       setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', `물가 ${infText} 반영`);
     }
@@ -1170,7 +1173,7 @@ function render() {
       const plus = compute({ ...inp, monthly: inp.monthly + 500000 });
       setStat(1, '달성까지 걸리는 기간', yearsMonthsText(res.months), `${doneAt.getFullYear()}년 ${doneAt.getMonth() + 1}월 무렵`);
       setStat(2, '그때의 목표', formatKRW(res.target) + '원', todayBasis ? `지금 돈 ${goalText} 가치` : '달성 시점 금액 그대로');
-      setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', `수익 ${formatKRW(Math.max(0, res.gain))}원`);
+      setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', res.gain < 0 ? `손실 ${formatKRW(-res.gain)}원` : `수익 ${formatKRW(res.gain)}원`);
       if (plus.months !== null && plus.months < res.months) {
         setStat(4, '월 50만원 더 넣으면', yearsMonthsText(plus.months), `${yearsMonthsText(res.months - plus.months)} 앞당겨짐`);
       } else {
@@ -1499,7 +1502,7 @@ function renderSensitivity(inp, res) {
     monthly: { name: '월 적립액 +10만원', sub: `월 ${wonToManText(inp.monthly)} → 월 ${wonToManText(inp.monthly + 100000)}` + (inp.growth > 0 ? ' (첫해 기준)' : ''), inp: { ...inp, monthly: inp.monthly + 100000 } },
     goal: { name: '목표금액 −10%', sub: `${goalTxt} → ${formatManwon(Math.round(inp.goal * 0.9 / 10000))}`, inp: { ...inp, goal: inp.goal * 0.9 } },
     years: { name: '기간 +5년', sub: `${inp.years}년 → ${inp.years + 5}년` + (MODE === 'pmt' && inp.basis === 'today' && inp.inflation > 0 ? ' (목표도 물가만큼 커짐)' : ''), inp: { ...inp, years: inp.years + 5 } },
-    delay: { name: '시작을 5년 늦추면', sub: '지금 자산은 그대로 굴리고, 적립만 5년 뒤부터', inp: { ...inp, skip: 60 } },
+    delay: { name: '시작을 5년 늦추면', sub: inp.current > 0 ? '모아둔 돈도 5년간 묵혀 두고, 굴리기·적립 모두 5년 뒤부터' : '적립을 5년 뒤부터 시작', inp: { ...inp, skip: 60 } },
   };
   const ga = growthAlt(inp);
   if (ga) D.growth = {
