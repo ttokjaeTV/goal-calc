@@ -991,6 +991,16 @@ function solveMonths(inp, R, pmt) {
   }
   return null;
 }
+// 지금 목표를 넘은 상태에서, 목표(물가로 커짐)보다 자산이 처음 작아지는 달. 끝까지 안 떨어지면 null
+function monthsUntilBelow(inp, R, pmt) {
+  const r = monthlyRate(R);
+  let a = inp.current;
+  for (let m = 1; m <= MAX_MONTHS; m++) {
+    a = a * (1 + r) + pmt * stepUp(inp.growth || 0, m);
+    if (a < targetAt(inp, m)) return m;
+  }
+  return null;
+}
 // 현재 자산만으로 언제 닿는지 (적립 0)
 function monthsWithoutSaving(inp, R) { return solveMonths(inp, R, 0); }
 
@@ -1125,7 +1135,9 @@ function render() {
     if (res.pmt <= 0) {
       const mw = monthsWithoutSaving(inp, inp.rate);
       vMain.innerHTML = `지금 모아둔 돈만으로도 <span class="hl">${inp.years}년 뒤 목표 달성</span>이 가능합니다`;
-      vSub.innerHTML = `추가 적립 없이 연 ${ratePct(inp.rate * 100)}로 굴리면 ${mw !== null ? '<strong>' + yearsMonthsText(mw) + '</strong> 뒤 목표에 닿습니다.' : '목표에 닿습니다.'}`;
+      vSub.innerHTML = mw === 0
+        ? `지금 모아둔 돈이 이미 목표 이상이고, 추가 적립 없이 연 ${ratePct(inp.rate * 100)}로 굴려도 ${inp.years}년 뒤 목표(${formatKRW(res.target)}원)를 넘습니다.`
+        : `추가 적립 없이 연 ${ratePct(inp.rate * 100)}로 굴리면 ${mw !== null ? '<strong>' + yearsMonthsText(mw) + '</strong> 뒤 목표에 닿습니다.' : '목표에 닿습니다.'}`;
     } else {
       const byWhen = `${inp.years}년 뒤인 ${monthAfterText(inp.years * 12)}까지`;
       vMain.innerHTML = gOn
@@ -1157,11 +1169,18 @@ function render() {
       [1, 2, 3, 4].forEach(i => setStat(i, '-', '-', ''));
       pathYears = 30; pathPmt = inp.monthly;
     } else if (res.months === 0) {
+      const drop = monthsUntilBelow(inp, inp.rate, inp.monthly);
       vMain.innerHTML = `이미 <span class="hl">목표금액에 도달</span>해 있습니다`;
-      vSub.innerHTML = `지금 모아둔 ${formatManwon(inp.current / 10000)}이 목표 ${goalText} 이상입니다.`;
+      vSub.innerHTML = `지금 모아둔 ${formatManwon(inp.current / 10000)}이 목표 ${goalText} 이상입니다.` + (drop !== null
+        ? ` <strong>다만 지금 조건 그대로면 ${yearsMonthsText(drop)} 뒤(${monthAfterText(drop)}) 목표 아래로 다시 떨어집니다.</strong> ` +
+          (todayBasis && inp.rate < inp.inflation ? `수익률(${ratePct(inp.rate * 100)})이 물가(${infText})보다 낮아 목표가 자산보다 빨리 커지기 때문입니다. ` : '수익률이 마이너스라 자산이 줄어들기 때문입니다. ') +
+          `언제까지 이 돈이 필요한지 정해 '필요한 월 적립액' 탭에서 기간을 넣어 확인해 보세요.`
+        : '');
       setStat(1, '달성까지', '0개월', '이미 달성');
       setStat(2, '현재 투자자산', formatKRW(inp.current) + '원', '');
-      setStat(3, '-', '-', ''); setStat(4, '-', '-', '');
+      if (drop !== null) setStat(3, '목표 아래로 떨어지는 시점', yearsMonthsText(drop) + ' 뒤', `${monthAfterText(drop)} 무렵` + (todayBasis ? ` · 물가 ${infText} 반영` : ''));
+      else setStat(3, '-', '-', '');
+      setStat(4, '-', '-', '');
       pathYears = 10; pathPmt = inp.monthly;
     } else {
       const now = new Date();
@@ -1620,7 +1639,8 @@ function updateDisplays() {
   set('goal-display', isFinite(g) && g > 0 ? formatManwon(g) : '입력', !(g > 0));
   set('current-display', isFinite(c) && c > 0 ? formatManwon(c) : '0원', !(c > 0));
   set('monthly-display', isFinite(m) && m > 0 ? '월 ' + formatManwon(m) : '월 0원', !(m > 0));
-  set('years-display', isFinite(y) ? Math.round(y) + '년' : '-', !isFinite(y));
+  const yc = isFinite(y) ? Math.max(1, Math.min(80, Math.round(y))) : NaN;   // readInputs()와 같은 규칙
+  set('years-display', isFinite(yc) ? yc + (yc === y ? '년' : '년으로 계산') : '-', !isFinite(yc));
   set('rate-display', isFinite(r) ? '연 ' + ratePct(r) : '-', !isFinite(r));
   set('inflation-display', isFinite(i) ? '연 ' + i.toFixed(1) + '%' : '-', !isFinite(i));
   const gr = v('growth');
@@ -1659,6 +1679,13 @@ function rerender() { updateDisplays(); placeUnits(); render(); }
 function bindEvents() {
   ['goal', 'current', 'monthly', 'years', 'rate', 'inflation', 'growth', 'fee'].forEach(id =>
     document.getElementById(id).addEventListener('input', rerender));
+  // 기간은 1년 단위로만 계산하므로, 1.5처럼 넣으면 칸에서 벗어날 때 계산에 쓰는 값(2)으로 칸도 바꿔 준다
+  document.getElementById('years').addEventListener('change', e => {
+    const y = parseFloat(e.target.value);
+    if (!isFinite(y)) return;
+    const yc = Math.max(1, Math.min(80, Math.round(y)));
+    if (yc !== y) { e.target.value = yc; rerender(); }
+  });
   document.getElementById('copy-result').addEventListener('click', copyResult);
   document.getElementById('inflation-on').addEventListener('change', rerender);
   document.querySelectorAll('input[name=basis]').forEach(r => r.addEventListener('change', rerender));
