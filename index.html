@@ -2,6 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
+<script src="https://ttokjaetv.github.io/member-lock.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>목표금액 계산기 · 똑재TV</title>
 <meta name="description" content="목표금액까지 매달 얼마씩, 몇 년이 걸릴지, 지금 계획대로면 얼마가 모일지 한 번에 계산합니다. 실제 종목으로 수익률 정하기·물가 반영·수익률 시나리오 비교 포함.">
@@ -559,7 +560,7 @@
         <div id="rp-rows"></div>
         <div class="rp-tools">
           <button class="btn ghost" type="button" id="rp-add">+ 종목 추가</button>
-          <label class="rp-opt"><input type="checkbox" id="rp-safe" checked><span>보수적으로 낮춰 잡기<br><span style="font-weight:600;color:var(--ink-mute);">주가성장률 2.5%p↓ · 연 수익률 상한 10%(커버드콜 8%) — 현금흐름 역산 계산기와 같은 기준</span></span></label>
+          <label class="rp-opt" data-member-click="보수적 보정"><input type="checkbox" id="rp-safe" checked><span>보수적으로 낮춰 잡기<br><span style="font-weight:600;color:var(--ink-mute);">주가성장률 2.5%p↓ · 연 수익률 상한 10%(커버드콜 8%) — 현금흐름 역산 계산기와 같은 기준</span></span></label>
         </div>
         <div class="rp-result">
           <div class="rp-total" id="rp-total">-</div>
@@ -570,7 +571,7 @@
       </div>
     </details>
     <details class="adv-set" id="adv-set">
-      <summary><span class="adv-set-title">상세 설정</span><span class="adv-set-sum" id="adv-summary">적립액 증가 없음 (매달 같은 금액) · 연 비용 0%</span></summary>
+      <summary data-member-click="적립 증가·연 비용"><span class="adv-set-title">상세 설정</span><span class="adv-set-sum" id="adv-summary">적립액 증가 없음 (매달 같은 금액) · 연 비용 0%</span></summary>
       <div class="input-group" style="padding-bottom:18px;">
         <label class="label" for="growth">적립액 매년 증가율</label>
         <div class="input-wrap">
@@ -672,7 +673,7 @@
     <div class="chart-container"><canvas id="growth-chart"></canvas></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-member="수익률 시나리오">
     <div class="step-label"><div class="step-line"></div><span class="step-text">수익률 시나리오 비교</span></div>
     <h3 class="chart-title" id="scen-title">수익률이 달라지면?</h3>
     <p class="chart-subtitle" id="scen-subtitle">-</p>
@@ -687,7 +688,7 @@
     <p class="input-hint is-hidden" id="scen-fee-note" style="margin-top:6px;"></p>
   </div>
 
-  <div class="card">
+  <div class="card" data-member="하나만 바꾸면">
     <div class="step-label"><div class="step-line"></div><span class="step-text">하나만 바꾸면?</span></div>
     <h3 class="chart-title" id="sens-title">조건 하나만 바꾸면 결과가 얼마나 달라질까?</h3>
     <p class="chart-subtitle" id="sens-subtitle">-</p>
@@ -700,12 +701,12 @@
     <p class="input-hint" style="margin-top:12px;" id="sens-note">나머지 조건은 모두 지금 그대로 두고 한 가지만 바꿔 계산했습니다.</p>
   </div>
 
-  <div class="card">
+  <div class="card" data-member="연차별 표와 엑셀">
     <h3 class="chart-title">연차별 상세 데이터</h3>
     <p class="chart-subtitle" id="table-subtitle">-</p>
     <div class="dl-bar">
-      <button type="button" class="dl-btn" id="dl-csv">CSV 내려받기</button>
-      <button type="button" class="dl-btn" id="dl-xlsx">엑셀(.xlsx) 내려받기</button>
+      <button type="button" class="dl-btn" id="dl-csv" data-member-click="엑셀 내려받기">CSV 내려받기</button>
+      <button type="button" class="dl-btn" id="dl-xlsx" data-member-click="엑셀 내려받기">엑셀(.xlsx) 내려받기</button>
       <span class="dl-note">엑셀에는 연도별 표와 월별 표가 함께 들어갑니다 (원 단위 숫자 · 세전)</span>
     </div>
     <div class="table-wrap">
@@ -1887,6 +1888,7 @@ function rpBind() {
   });
   document.getElementById('rp-add').addEventListener('click', () => {
     if (RP.rows.length >= RP_MAX) return;
+    if (RP.rows.length >= 2 && window.TJLock && !TJLock.allow('종목 3개 이상')) return;   // 멤버십: 무료는 2종목까지
     const used = new Set(RP.rows.map(r => r.key));
     const next = ['US:QQQ', 'US:VOO', 'US:JEPI', 'KR:458730', 'KR:161510'].find(k => !used.has(k)) || 'US:VOO';
     const share = Math.floor(100 / (RP.rows.length + 1));
@@ -2008,7 +2010,13 @@ function readUrl() {
   if (basis === 'today' || basis === 'future') document.querySelector(`input[name=basis][value=${basis}]`).checked = true;
   const mode = q.get('mode');
   if (['pmt', 'time', 'fv'].includes(mode)) MODE = mode;
-  if (parseFloat(q.get('growth')) > 0 || parseFloat(q.get('fee')) > 0) document.getElementById('adv-set').open = true;
+  if (parseFloat(q.get('growth')) > 0 || parseFloat(q.get('fee')) > 0) {
+    if (window.TJLock && TJLock.locked()) {   // 멤버십: 잠긴 상태로 받은 링크는 적립 증가·연 비용을 기본값(0)으로 되돌림
+      document.getElementById('growth').value = '0';
+      document.getElementById('fee').value = '0';
+      TJLock.prompt('적립 증가·연 비용');
+    } else document.getElementById('adv-set').open = true;
+  }
   if (q.get('from') === 'retirement') {
     if (!q.has('basis')) document.querySelector('input[name=basis][value=future]').checked = true;
     document.getElementById('from-bar-slot').innerHTML =
