@@ -1153,8 +1153,12 @@ function render() {
     pathYears = inp.years; pathPmt = res.pmt;
     // 5년 늦게 시작: 같은 목표·같은 달성 시점, 투자 전체를 5년 늦게 시작 (지금 자산도 5년 묵힌 뒤 굴림)
     const delay = inp.years > 5 ? { pmt: solvePmt(res.target, inp.current, monthlyRate(inp.rate), inp.years * 12, inp.growth, 60) } : null;
-    setStat(1, gOn ? '필요한 월 적립액 (첫해)' : '필요한 월 적립액', wonToManText(res.pmt),
-      gOn ? `매년 ${gPct}씩 늘려 마지막 해 월 ${wonToManText(res.lastPmt)}` : `연 ${wonToManText(res.pmt * 12)}`);
+    // 월 적립액은 1,000만원 미만이면 0.1만원 단위로 보여 주고, 연 금액은 '보이는 월 금액 × 12'로 맞춘다 (159만원·연 1,914만원처럼 어긋나 보이지 않게)
+    const pmtMan = res.pmt >= 1e7 ? null : Math.round(res.pmt / 1000) / 10;
+    const pmtText = pmtMan == null || pmtMan < 1 ? wonToManText(res.pmt) : pmtMan.toLocaleString() + '만원';
+    const yearText = pmtMan == null || pmtMan < 1 ? wonToManText(res.pmt * 12) : wonToManText(Math.round(pmtMan * 12 * 10) / 10 * 10000);
+    setStat(1, gOn ? '필요한 월 적립액 (첫해)' : '필요한 월 적립액', pmtText,
+      gOn ? `매년 ${gPct}씩 늘려 마지막 해 월 ${wonToManText(res.lastPmt)}` : `연 ${yearText}`);
     setStat(2, `${inp.years}년 뒤 목표`, formatKRW(res.target) + '원', todayBasis ? `지금 돈 ${goalText} 가치` : '달성 시점 금액 그대로');
     setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', res.gain < 0 ? `손실 ${formatKRW(-res.gain)}원 · 넣은 돈보다 적게 남음` : `수익 ${formatKRW(res.gain)}원 · 평가액의 ${pct(res.gain / Math.max(1, res.final) * 100, 0)}`);
     if (delay && delay.pmt > 0) {   // 늦게 시작해도 적립이 필요 없으면 '월 0원 더' 대신 실질 가치를 보여 준다
