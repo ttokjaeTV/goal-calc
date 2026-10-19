@@ -902,6 +902,13 @@ function wonToManText(won) {
   if (m >= 1) return (Math.round(m * 10) / 10).toLocaleString() + '만원';
   return Math.round(won).toLocaleString() + '원';
 }
+// 필요한 월 적립액: 1,000만원 미만이면 0.1만원 단위로 보여 주고, 연 금액은 '보이는 월 금액 × 12'로 맞춘다
+// (결론 문장과 카드가 같은 숫자를 쓰도록 한 곳에서 만든다 — 159만원·연 1,914만원처럼 어긋나 보이지 않게)
+function pmtManText(won) {
+  const man = won >= 1e7 ? null : Math.round(won / 1000) / 10;
+  if (man == null || man < 1) return { month: wonToManText(won), year: wonToManText(won * 12) };
+  return { month: man.toLocaleString() + '만원', year: wonToManText(Math.round(man * 12 * 10) / 10 * 10000) };
+}
 function yearsMonthsText(months) {
   const y = Math.floor(months / 12), m = months % 12;
   if (y && m) return y + '년 ' + m + '개월';
@@ -1143,9 +1150,10 @@ function render() {
         : `추가 적립 없이 연 ${ratePct(inp.rate * 100)}로 굴리면 ${mw !== null ? '<strong>' + yearsMonthsText(mw) + '</strong> 뒤 목표에 닿습니다.' : '목표에 닿습니다.'}`;
     } else {
       const byWhen = `${inp.years}년 뒤인 ${monthAfterText(inp.years * 12)}까지`;
+      const pmtMonth = pmtManText(res.pmt).month;
       vMain.innerHTML = gOn
-        ? `${goalText}을 ${byWhen} 모으려면<br>첫해 매달 <span class="hl">${wonToManText(res.pmt)}</span>부터, 해마다 ${gPct}씩 늘려 모으면 됩니다`
-        : `${goalText}을 ${byWhen} 모으려면<br>매달 <span class="hl">${wonToManText(res.pmt)}</span>씩 모으면 됩니다`;
+        ? `${goalText}을 ${byWhen} 모으려면<br>첫해 매달 <span class="hl">${pmtMonth}</span>부터, 해마다 ${gPct}씩 늘려 모으면 됩니다`
+        : `${goalText}을 ${byWhen} 모으려면<br>매달 <span class="hl">${pmtMonth}</span>씩 모으면 됩니다`;
       vSub.innerHTML = todayBasis
         ? `물가 ${infText}를 반영하면 ${inp.years}년 뒤 목표는 <strong>${formatKRW(res.target)}원</strong>입니다. 지금 돈 ${goalText}과 같은 가치를 맞추는 기준으로 계산했습니다.`
         : `${inp.years}년 뒤 통장에 <strong>${formatKRW(res.target)}원</strong>이 찍히는 것을 목표로 계산했습니다.${inp.inflation > 0 ? ' 그때 이 돈의 가치는 오늘 돈으로 <strong>' + formatKRW(res.real) + '원</strong>입니다.' : ''}`;
@@ -1153,18 +1161,15 @@ function render() {
     pathYears = inp.years; pathPmt = res.pmt;
     // 5년 늦게 시작: 같은 목표·같은 달성 시점, 투자 전체를 5년 늦게 시작 (지금 자산도 5년 묵힌 뒤 굴림)
     const delay = inp.years > 5 ? { pmt: solvePmt(res.target, inp.current, monthlyRate(inp.rate), inp.years * 12, inp.growth, 60) } : null;
-    // 월 적립액은 1,000만원 미만이면 0.1만원 단위로 보여 주고, 연 금액은 '보이는 월 금액 × 12'로 맞춘다 (159만원·연 1,914만원처럼 어긋나 보이지 않게)
-    const pmtMan = res.pmt >= 1e7 ? null : Math.round(res.pmt / 1000) / 10;
-    const pmtText = pmtMan == null || pmtMan < 1 ? wonToManText(res.pmt) : pmtMan.toLocaleString() + '만원';
-    const yearText = pmtMan == null || pmtMan < 1 ? wonToManText(res.pmt * 12) : wonToManText(Math.round(pmtMan * 12 * 10) / 10 * 10000);
-    setStat(1, gOn ? '필요한 월 적립액 (첫해)' : '필요한 월 적립액', pmtText,
-      gOn ? `매년 ${gPct}씩 늘려 마지막 해 월 ${wonToManText(res.lastPmt)}` : `연 ${yearText}`);
+    const pmtT = pmtManText(res.pmt);
+    setStat(1, gOn ? '필요한 월 적립액 (첫해)' : '필요한 월 적립액', pmtT.month,
+      gOn ? `매년 ${gPct}씩 늘려 마지막 해 월 ${wonToManText(res.lastPmt)}` : `연 ${pmtT.year}`);
     setStat(2, `${inp.years}년 뒤 목표`, formatKRW(res.target) + '원', todayBasis ? `지금 돈 ${goalText} 가치` : '달성 시점 금액 그대로');
     setStat(3, '내가 넣는 돈 / 불어난 돈', formatKRW(res.principal) + '원', res.gain < 0 ? `손실 ${formatKRW(-res.gain)}원 · 넣은 돈보다 적게 남음` : `수익 ${formatKRW(res.gain)}원 · 평가액의 ${pct(res.gain / Math.max(1, res.final) * 100, 0)}`);
     if (delay && delay.pmt > 0) {   // 늦게 시작해도 적립이 필요 없으면 '월 0원 더' 대신 실질 가치를 보여 준다
       setStat(4, '5년 늦게 시작하면', wonToManText(delay.pmt), `같은 목표·같은 시점, ${inp.current > 0 ? '모아둔 돈까지 ' : ''}${inp.years - 5}년만 굴림 · 월 ${wonToManText(Math.max(0, delay.pmt - res.pmt))} 더`);
     } else {
-      setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', `물가 ${infText} 반영`);
+      setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflation > 0 ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
     }
   } else if (MODE === 'time') {
     vLabel.textContent = 'MODE 2 · 목표 달성 시점';
@@ -1203,7 +1208,7 @@ function render() {
       if (plus.months !== null && plus.months < res.months) {
         setStat(4, '월 50만원 더 넣으면', yearsMonthsText(plus.months), `${yearsMonthsText(res.months - plus.months)} 앞당겨짐`);
       } else {
-        setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', `물가 ${infText} 반영`);
+        setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflation > 0 ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
       }
       pathYears = Math.min(60, Math.max(1, Math.ceil(res.months / 12)));
       pathPmt = inp.monthly;
