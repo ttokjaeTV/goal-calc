@@ -1169,7 +1169,7 @@ function render() {
     if (delay && delay.pmt > 0) {   // 늦게 시작해도 적립이 필요 없으면 '월 0원 더' 대신 실질 가치를 보여 준다
       setStat(4, '5년 늦게 시작하면', wonToManText(delay.pmt), `같은 목표·같은 시점, ${inp.current > 0 ? '모아둔 돈까지 ' : ''}${inp.years - 5}년만 굴림 · 월 ${wonToManText(Math.max(0, delay.pmt - res.pmt))} 더`);
     } else {
-      setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflation > 0 ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
+      setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflationOn ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
     }
   } else if (MODE === 'time') {
     vLabel.textContent = 'MODE 2 · 목표 달성 시점';
@@ -1208,7 +1208,7 @@ function render() {
       if (plus.months !== null && plus.months < res.months) {
         setStat(4, '월 50만원 더 넣으면', yearsMonthsText(plus.months), `${yearsMonthsText(res.months - plus.months)} 앞당겨짐`);
       } else {
-        setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflation > 0 ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
+        setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflationOn ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
       }
       pathYears = Math.min(60, Math.max(1, Math.ceil(res.months / 12)));
       pathPmt = inp.monthly;
@@ -1240,7 +1240,7 @@ function render() {
       ? `월 ${wonToManText(inp.monthly)}부터 매년 ${gPct}씩 늘려 ${inp.years * 12}개월 + 현재 투자자산`
       : `월 ${wonToManText(inp.monthly)} × ${inp.years * 12}개월 + 현재 투자자산`);
     setStat(3, '불어난 돈', formatKRW(res.gain) + '원', `평가액의 ${pct(res.gain / Math.max(1, res.final) * 100, 0)}`);
-    setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflation > 0 ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
+    setStat(4, '오늘 돈 가치(실질)', formatKRW(res.real) + '원', inp.inflationOn ? `물가 ${infText} 반영` : '물가 반영 꺼짐');
     pathYears = inp.years; pathPmt = inp.monthly;
   }
   vSub.innerHTML += growthCompareHTML(inp, res);
