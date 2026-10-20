@@ -920,7 +920,9 @@ function monthAfterText(m) {
   const now = new Date(), d = new Date(now.getFullYear(), now.getMonth() + m, 1);
   return `${d.getFullYear()}년 ${d.getMonth() + 1}월`;
 }
-const pct = (v, d = 1) => (Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d) + '%';
+// 소수 자릿수는 toFixed 그대로 두고 정수 부분에만 천 단위 쉼표 (146983.33 → 146,983.33)
+const commaFixed = (v, d) => { const [i, f] = v.toFixed(d).split('.'); return i.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (f ? '.' + f : ''); };
+const pct = (v, d = 1) => commaFixed(Math.round(v * Math.pow(10, d)) / Math.pow(10, d), d) + '%';
 // 수익률 표시: 소수 둘째 자리가 있으면 2자리(6.25%), 아니면 1자리(6.0%)
 const rateFix = v => { const r2 = Math.round(v * 100) / 100; return Math.abs(r2 * 10 - Math.round(r2 * 10)) < 1e-9 ? r2.toFixed(1) : r2.toFixed(2); };
 const ratePct = v => rateFix(v) + '%';
@@ -1085,9 +1087,9 @@ function growthCompareHTML(inp, res) {
     if (inp.years < 2 || !(res.pmt > 0) || !(alt.pmt > 0)) return '';
     const d = alt.pmt - res.pmt;
     t = a.g > 0
-      ? `${a.lead} 첫해 매달 <strong>${wonToManText(alt.pmt)}</strong>부터 시작하면 됩니다(마지막 해 월 ${wonToManText(alt.lastPmt)}).`
-      : `${a.lead} 매달 <strong>${wonToManText(alt.pmt)}</strong>이 필요합니다.`;
-    if (Math.abs(d) >= 500) t += ` 지금 계획보다 ${a.g > 0 ? '첫해 ' : ''}월 ${wonToManText(Math.abs(d))} ${d > 0 ? '더 많습니다' : '적습니다'}.`;
+      ? `${a.lead} 첫해 매달 <strong>${pmtManText(alt.pmt).month}</strong>부터 시작하면 됩니다(마지막 해 월 ${wonToManText(alt.lastPmt)}).`
+      : `${a.lead} 매달 <strong>${pmtManText(alt.pmt).month}</strong>이 필요합니다.`;
+    if (Math.abs(d) >= 500) t += ` 지금 계획보다 ${a.g > 0 ? '첫해 ' : ''}월 ${pmtManText(Math.abs(d)).month} ${d > 0 ? '더 많습니다' : '적습니다'}.`;
   } else if (MODE === 'time') {
     if (!(inp.monthly > 0) || res.months === 0) return '';
     if (alt.months === null) {
@@ -1223,7 +1225,7 @@ function render() {
       if (ratio >= 100) sub += ` 목표(${formatKRW(res.target)}원)를 <strong>${pct(ratio - 100, 0)} 넘깁니다</strong>.`;
       else {
         const need = solvePmt(res.target, inp.current, monthlyRate(inp.rate), inp.years * 12, inp.growth);
-        sub += ` 목표(${formatKRW(res.target)}원)의 <strong>${pct(ratio, 0)}</strong> 수준이라, 목표를 채우려면 ${gOn ? '첫해 ' : ''}매달 <strong>${wonToManText(need)}</strong>이 필요합니다(지금보다 월 ${wonToManText(need - inp.monthly)} 더${gOn ? `, 이후 매년 ${gPct}씩 증가` : ''}).`;
+        sub += ` 목표(${formatKRW(res.target)}원)의 <strong>${pct(ratio, 0)}</strong> 수준이라, 목표를 채우려면 ${gOn ? '첫해 ' : ''}매달 <strong>${pmtManText(need).month}</strong>이 필요합니다(지금보다 월 ${pmtManText(need - inp.monthly).month} 더${gOn ? `, 이후 매년 ${gPct}씩 증가` : ''}).`;
       }
     }
     // 같은 원금을 처음에 한 번에 넣었다면 (적립식 vs 거치식)
@@ -1235,7 +1237,7 @@ function render() {
         ` 일찍 들어간 돈일수록 오래 굴러서 생기는 차이이며, 목돈이 지금 있어야 고를 수 있는 방법입니다${inp.rate < 0 ? ' (수익률이 마이너스면 한 번에 넣을수록 손실도 커집니다)' : ''}.</span>`;
     }
     vSub.innerHTML = sub;
-    setStat(1, `${inp.years}년 뒤 평가액`, formatKRW(res.final) + '원', `원금의 ${(res.final / Math.max(1, res.principal)).toFixed(2)}배`);
+    setStat(1, `${inp.years}년 뒤 평가액`, formatKRW(res.final) + '원', `원금의 ${commaFixed(res.final / Math.max(1, res.principal), 2)}배`);
     setStat(2, '내가 넣는 돈', formatKRW(res.principal) + '원', gOn
       ? `월 ${wonToManText(inp.monthly)}부터 매년 ${gPct}씩 늘려 ${inp.years * 12}개월 + 현재 투자자산`
       : `월 ${wonToManText(inp.monthly)} × ${inp.years * 12}개월 + 현재 투자자산`);
