@@ -2011,7 +2011,7 @@ function readUrl() {
     if (!isFinite(v) || v < -5 || v > 1e7) return;
     document.getElementById(alias[k] || k).value = String(Math.round(v * 100) / 100);
   });
-  if (q.has('inflation') && parseFloat(q.get('inflation')) === 0) {
+  if (q.has('inflation') && parseFloat(q.get('inflation')) === 0 && !q.has('basis')) {   // 물가 켬 + 0%로 만든 링크에는 basis가 있음 → 켬 그대로
     document.getElementById('inflation-on').checked = false;
     document.getElementById('inflation').value = '2.5';
   }
