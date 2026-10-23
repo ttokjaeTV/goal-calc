@@ -2030,6 +2030,10 @@ function readUrl() {
       TJLock.prompt('적립 증가·연 비용');
     } else document.getElementById('adv-set').open = true;
   }
+  if (q.get('from') === 'backtest' && q.has('rate')) {
+    document.getElementById('from-bar-slot').innerHTML =
+      `<div class="from-bar"><span>백테스트 계산기의 과거 연평균 수익률 ${Number(document.getElementById('rate').value)}%를 가져왔습니다. 과거 수익률이 앞으로도 나온다는 보장은 없으니, 수익률을 낮춰서도 확인해 보세요.</span></div>`;
+  }
   if (q.get('from') === 'retirement') {
     if (!q.has('basis')) document.querySelector('input[name=basis][value=future]').checked = true;
     document.getElementById('from-bar-slot').innerHTML =
