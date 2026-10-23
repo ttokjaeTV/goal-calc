@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="https://ttokjaetv.github.io/member-lock.js"></script>
+<script src="https://ttokjaetv.github.io/profile-v1.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>목표금액 계산기 · 똑재TV</title>
 <meta name="description" content="목표금액까지 매달 얼마씩, 몇 년이 걸릴지, 지금 계획대로면 얼마가 모일지 한 번에 계산합니다. 실제 종목으로 수익률 정하기·물가 반영·수익률 시나리오 비교 포함.">
@@ -438,6 +439,7 @@
   </div>
 
   <div id="from-bar-slot"></div>
+  <div id="tj-profile"></div>
 
   <!-- STEP 01 : 모드 -->
   <div class="card">
@@ -2043,6 +2045,8 @@ window.addEventListener('DOMContentLoaded', () => {
   rpRender();
   rpLoad().catch(() => { RP.status = 'fail'; rpRender(); });
   rerender();
+  /* 내 정보(다른 노후 계산기와 같이 쓰는 값) 채우기·저장 — 허브 profile-v1.js */
+  if (window.TJProfile) TJProfile.attach({ map: { 'current': 'fin', 'monthly': 'saving', 'inflation': 'inflation' } });
 });
 </script>
 </body>
